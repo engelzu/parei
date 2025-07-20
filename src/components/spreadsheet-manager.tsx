@@ -25,6 +25,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -40,6 +48,7 @@ import {
   ChevronUp,
   ChevronDown,
   Search,
+  Columns,
 } from 'lucide-react';
 
 interface SpreadsheetManagerProps {
@@ -56,7 +65,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   initialError,
 }) => {
   const [allData, setAllData] = useState<SheetRow[]>(initialData);
-  const [headers, setHeaders] = useState<string[]>(initialHeaders);
+  const [headers] = useState<string[]>(initialHeaders);
   const [error, setError] = useState<string | null>(initialError);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({
@@ -64,6 +73,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     'RESPONSÁVEL': [],
     'ATUALIZADOR 1': [],
   });
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [lastUpdated, setLastUpdated] = useState('');
   const [isSaving, startSaving] = useTransition();
@@ -73,6 +83,18 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   useEffect(() => {
     setLastUpdated(new Date().toLocaleString('pt-BR'));
   }, [allData]);
+
+  useEffect(() => {
+    const initialVisibility: Record<string, boolean> = {};
+    headers.forEach(header => {
+      initialVisibility[header] = true;
+    });
+    setColumnVisibility(initialVisibility);
+  }, [headers]);
+
+  const visibleHeaders = useMemo(() => {
+    return headers.filter(header => columnVisibility[header]);
+  }, [headers, columnVisibility]);
 
   const filterOptions = useMemo(() => {
     const options: Record<string, string[]> = {
@@ -143,6 +165,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const handleSave = () => {
     startSaving(async () => {
+      // We pass the original `headers`, not `visibleHeaders`
       const result = await saveDataToSheet(headers, allData);
       if (result.success) {
         toast({
@@ -280,17 +303,55 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 />
             </div>
             <div className="hidden md:flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline"><Columns className="mr-2 h-4 w-4" /> Colunas</Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Exibir/Ocultar Colunas</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {headers.map((header) => (
+                      <DropdownMenuCheckboxItem
+                        key={header}
+                        className="capitalize"
+                        checked={columnVisibility[header]}
+                        onCheckedChange={(value) =>
+                          setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
+                        }
+                      >
+                        {header}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button variant="ghost" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar</Button>
             </div>
             <div className="md:hidden">
               <Sheet open={isMobileFilterOpen} onOpenChange={setMobileFilterOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" className="w-full"><Filter className="mr-2 h-4 w-4" />Filtros</Button>
+                  <Button variant="outline" className="w-full"><Filter className="mr-2 h-4 w-4" />Filtros & Colunas</Button>
                 </SheetTrigger>
                 <SheetContent>
-                  <SheetHeader><SheetTitle>Filtros</SheetTitle></SheetHeader>
+                  <SheetHeader><SheetTitle>Filtros e Colunas</SheetTitle></SheetHeader>
                   <div className="space-y-4 py-4">
+                    <h3 className="font-semibold">Filtros</h3>
                     <FilterControls inSheet={true} />
+                     <h3 className="font-semibold pt-4">Colunas Visíveis</h3>
+                     <div className="space-y-2">
+                        {headers.map((header) => (
+                            <div key={`mobile-${header}`} className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    id={`mobile-col-${header}`}
+                                    checked={columnVisibility[header]}
+                                    onChange={(e) =>
+                                    setColumnVisibility((prev) => ({ ...prev, [header]: e.target.checked }))
+                                    }
+                                />
+                                <label htmlFor={`mobile-col-${header}`}>{header}</label>
+                            </div>
+                        ))}
+                     </div>
                     <Button variant="ghost" onClick={() => { clearFilters(); setMobileFilterOpen(false); }} className="w-full"><X className="mr-2 h-4 w-4" />Limpar Filtros</Button>
                   </div>
                 </SheetContent>
@@ -305,7 +366,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             <Table>
               <TableHeader className="sticky top-0 bg-secondary">
                 <TableRow>
-                  {headers.map(header => (
+                  {visibleHeaders.map(header => (
                     <TableHead key={header} className="whitespace-nowrap">{header}</TableHead>
                   ))}
                 </TableRow>
@@ -314,7 +375,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 {paginatedData.length > 0 ? (
                   paginatedData.map(row => (
                     <TableRow key={row.id}>
-                      {headers.map(header => (
+                      {visibleHeaders.map(header => (
                         <TableCell key={`${row.id}-${header}`} className="whitespace-nowrap max-w-xs truncate">
                           {header === 'AVANÇO' ? (
                             <div className="flex items-center gap-2">
@@ -331,7 +392,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={headers.length} className="h-24 text-center">
+                    <TableCell colSpan={visibleHeaders.length} className="h-24 text-center">
                       Nenhum resultado encontrado.
                     </TableCell>
                   </TableRow>
