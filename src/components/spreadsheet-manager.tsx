@@ -34,7 +34,6 @@ import {
   RotateCw,
   Filter,
   X,
-  FileSpreadsheet,
   Save,
   Loader2,
   AlertTriangle,
@@ -165,23 +164,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     setActiveFilters({ 'ÁREA': [], 'RESPONSÁVEL': [], 'ATUALIZADOR 1': [] });
     setCurrentPage(1);
   };
-
-  const exportToCsv = () => {
-    const csvContent = [
-      headers.join(';'),
-      ...filteredData.map(row => 
-        headers.map(header => `"${String(row[header] || '').replace(/"/g, '""')}"`).join(';')
-      )
-    ].join('\r\n');
-
-    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', 'planilha_flex_export.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
   
   const renderPagination = () => {
     const pageButtons = [];
@@ -298,7 +280,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 />
             </div>
             <div className="hidden md:flex items-center gap-2">
-                <Button variant="outline" onClick={exportToCsv}><FileSpreadsheet className="mr-2 h-4 w-4" />Exportar</Button>
                 <Button variant="ghost" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar</Button>
             </div>
             <div className="md:hidden">
@@ -310,7 +291,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                   <SheetHeader><SheetTitle>Filtros</SheetTitle></SheetHeader>
                   <div className="space-y-4 py-4">
                     <FilterControls inSheet={true} />
-                    <Button variant="outline" onClick={exportToCsv} className="w-full"><FileSpreadsheet className="mr-2 h-4 w-4" />Exportar</Button>
                     <Button variant="ghost" onClick={() => { clearFilters(); setMobileFilterOpen(false); }} className="w-full"><X className="mr-2 h-4 w-4" />Limpar Filtros</Button>
                   </div>
                 </SheetContent>
