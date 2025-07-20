@@ -29,42 +29,39 @@ export async function saveDataToSheet(headers: string[], allData: SheetRow[]) {
 
     const response = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
       body: new URLSearchParams(payload as any).toString(),
-      redirect: 'follow',
-      cache: 'no-store', // Adicionado para evitar cache
+      cache: 'no-store',
     });
 
-    const textResponse = await response.text();
-    let result;
-
-    if (!response.ok) {
-        // Se a resposta não for OK, tentamos interpretar a resposta como JSON de erro,
-        // mas se falhar, usamos o texto da resposta como a mensagem de erro.
+    // Se o status for 302 (redirecionamento) ou 200, geralmente significa sucesso no Apps Script.
+    if (response.status === 302 || response.status === 200) {
         try {
-            result = JSON.parse(textResponse);
-            throw new Error(result.message || result.error || `Erro do servidor: ${response.status}`);
+            const result = await response.json();
+             if (result.status === 'success') {
+                return { success: true, message: result.message || 'Dados salvos com sucesso!' };
+             } else {
+                return { success: false, message: result.message || 'Erro retornado pelo script.' };
+             }
         } catch (e) {
-            // A resposta não era JSON, então usamos o texto bruto.
-            // Isso é útil para capturar erros de HTML ou outras respostas não-JSON do Apps Script.
-            throw new Error(`Erro do servidor (${response.status}): ${textResponse.substring(0, 500)}`);
+            // Se a resposta não for JSON, mas o status for OK, consideramos sucesso.
+            // Isso acontece porque o Apps Script pode retornar HTML em um redirecionamento.
+            return { success: true, message: 'Operação concluída com sucesso!' };
         }
     }
     
+    // Se a resposta não for OK e não for um redirecionamento, tratamos como erro.
+    const errorText = await response.text();
     try {
-      result = JSON.parse(textResponse);
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.message || errorJson.error || `Erro do servidor: ${response.status}`);
     } catch (e) {
-      // O script pode retornar uma resposta não-JSON ou HTML em caso de sucesso (devido a redirecionamentos).
-      // Se a resposta foi 'ok' (status 200), consideramos sucesso.
-      return { success: true, message: 'Dados salvos com sucesso!' };
+        throw new Error(`Erro do servidor (${response.status}): ${errorText.substring(0, 500)}`);
     }
 
-    if (result.status === 'success') {
-      return { success: true, message: result.message || 'Dados salvos com sucesso!' };
-    } else {
-      // Se o JSON retornado indicar um erro.
-      throw new Error(result.message || result.error || 'Erro desconhecido ao salvar os dados.');
-    }
   } catch (error: any) {
     console.error('Erro detalhado ao salvar na planilha:', error);
     return { success: false, message: error.message };
