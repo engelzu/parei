@@ -34,6 +34,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { saveDataToSheet } from '@/app/actions';
@@ -165,7 +168,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const handleSave = () => {
     startSaving(async () => {
-      // We pass the original `headers`, not `visibleHeaders`
       const result = await saveDataToSheet(headers, allData);
       if (result.success) {
         toast({
@@ -307,21 +309,25 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline"><Columns className="mr-2 h-4 w-4" /> Colunas</Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="w-64">
                     <DropdownMenuLabel>Exibir/Ocultar Colunas</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {headers.map((header) => (
-                      <DropdownMenuCheckboxItem
-                        key={header}
-                        className="capitalize"
-                        checked={columnVisibility[header]}
-                        onCheckedChange={(value) =>
-                          setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
-                        }
-                      >
-                        {header}
-                      </DropdownMenuCheckboxItem>
-                    ))}
+                    <ScrollArea className="h-72">
+                        <div className="p-2">
+                        {headers.map((header) => (
+                          <DropdownMenuCheckboxItem
+                            key={header}
+                            className="capitalize"
+                            checked={columnVisibility[header]}
+                            onCheckedChange={(value) =>
+                              setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
+                            }
+                          >
+                            {header}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                        </div>
+                    </ScrollArea>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Button variant="ghost" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar</Button>
@@ -332,28 +338,31 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                   <Button variant="outline" className="w-full"><Filter className="mr-2 h-4 w-4" />Filtros & Colunas</Button>
                 </SheetTrigger>
                 <SheetContent>
-                  <SheetHeader><SheetTitle>Filtros e Colunas</SheetTitle></SheetHeader>
-                  <div className="space-y-4 py-4">
-                    <h3 className="font-semibold">Filtros</h3>
-                    <FilterControls inSheet={true} />
-                     <h3 className="font-semibold pt-4">Colunas Visíveis</h3>
-                     <div className="space-y-2">
-                        {headers.map((header) => (
-                            <div key={`mobile-${header}`} className="flex items-center space-x-2">
-                                <input
-                                    type="checkbox"
-                                    id={`mobile-col-${header}`}
-                                    checked={columnVisibility[header]}
-                                    onChange={(e) =>
-                                    setColumnVisibility((prev) => ({ ...prev, [header]: e.target.checked }))
-                                    }
-                                />
-                                <label htmlFor={`mobile-col-${header}`}>{header}</label>
+                    <SheetHeader><SheetTitle>Filtros e Colunas</SheetTitle></SheetHeader>
+                    <ScrollArea className="h-[calc(100%-80px)]">
+                        <div className="space-y-4 p-4">
+                            <h3 className="font-semibold">Filtros</h3>
+                            <FilterControls inSheet={true} />
+                            <h3 className="font-semibold pt-4">Colunas Visíveis</h3>
+                            <div className="space-y-2">
+                                {headers.map((header) => (
+                                    <div key={`mobile-${header}`} className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id={`mobile-col-${header}`}
+                                            checked={columnVisibility[header]}
+                                            onCheckedChange={(value) =>
+                                            setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
+                                            }
+                                        />
+                                        <Label htmlFor={`mobile-col-${header}`} className="flex-1 cursor-pointer">{header}</Label>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                     </div>
-                    <Button variant="ghost" onClick={() => { clearFilters(); setMobileFilterOpen(false); }} className="w-full"><X className="mr-2 h-4 w-4" />Limpar Filtros</Button>
-                  </div>
+                        </div>
+                    </ScrollArea>
+                    <div className="p-4 border-t">
+                        <Button variant="ghost" onClick={() => { clearFilters(); setMobileFilterOpen(false); }} className="w-full"><X className="mr-2 h-4 w-4" />Limpar Filtros</Button>
+                    </div>
                 </SheetContent>
               </Sheet>
             </div>
@@ -362,12 +371,11 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             <FilterControls />
         </div>
         <div className="rounded-md border">
-          <div className="relative w-full overflow-auto">
             <Table>
-              <TableHeader className="sticky top-0 bg-secondary">
+              <TableHeader>
                 <TableRow>
                   {visibleHeaders.map(header => (
-                    <TableHead key={header} className="whitespace-nowrap">{header}</TableHead>
+                    <TableHead key={header} className="whitespace-nowrap bg-secondary sticky top-0">{header}</TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
@@ -399,7 +407,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 )}
               </TableBody>
             </Table>
-          </div>
         </div>
         <div className="flex items-center justify-between mt-4 flex-wrap gap-4">
           <p className="text-sm text-muted-foreground">
