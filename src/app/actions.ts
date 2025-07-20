@@ -30,30 +30,21 @@ export async function saveDataToSheet(headers: string[], allData: SheetRow[]) {
     const response = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
+        'Content-Type': 'application/json',
       },
-      body: new URLSearchParams(payload as any).toString(),
+      body: JSON.stringify(payload),
       cache: 'no-store',
     });
 
-    // Se o status for 302 (redirecionamento) ou 200, geralmente significa sucesso no Apps Script.
-    if (response.status === 302 || response.status === 200) {
-        try {
-            const result = await response.json();
-             if (result.status === 'success') {
-                return { success: true, message: result.message || 'Dados salvos com sucesso!' };
-             } else {
-                return { success: false, message: result.message || 'Erro retornado pelo script.' };
-             }
-        } catch (e) {
-            // Se a resposta não for JSON, mas o status for OK, consideramos sucesso.
-            // Isso acontece porque o Apps Script pode retornar HTML em um redirecionamento.
-            return { success: true, message: 'Operação concluída com sucesso!' };
-        }
+    if (response.ok) {
+        const result = await response.json();
+         if (result.status === 'success') {
+            return { success: true, message: result.message || 'Dados salvos com sucesso!' };
+         } else {
+            return { success: false, message: result.error || 'Erro retornado pelo script.' };
+         }
     }
     
-    // Se a resposta não for OK e não for um redirecionamento, tratamos como erro.
     const errorText = await response.text();
     try {
         const errorJson = JSON.parse(errorText);
