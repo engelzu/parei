@@ -148,13 +148,13 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       if (result.success) {
         toast({
           title: "Sucesso!",
-          description: result.message,
+          description: "Os dados foram salvos na planilha.",
         });
       } else {
         toast({
           variant: "destructive",
           title: "Erro ao Salvar",
-          description: result.message,
+          description: result.message || 'Ocorreu um erro desconhecido ao salvar os dados.',
         });
       }
     });
