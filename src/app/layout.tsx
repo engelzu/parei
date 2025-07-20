@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'PlanilhaFlex - Gestão de Planilha',
+  title: 'PAREI v1.1 - Gestão de Planilha',
   description: 'Gerencie sua planilha do Google Sheets com facilidade.',
 };
 

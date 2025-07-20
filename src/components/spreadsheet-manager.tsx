@@ -227,7 +227,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     return (
       <Card>
         <CardHeader>
-            <CardTitle>PlanilhaFlex</CardTitle>
+            <CardTitle>PAREI v1.1</CardTitle>
         </CardHeader>
         <CardContent>
             <Alert variant="destructive">
@@ -245,7 +245,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       <CardHeader>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                <CardTitle className="text-2xl font-bold text-gray-800 dark:text-gray-200">PlanilhaFlex</CardTitle>
+                <CardTitle className="text-2xl font-bold text-gray-800 dark:text-gray-200">PAREI v1.1</CardTitle>
                 <CardDescription>
                     {lastUpdated ? `Última atualização: ${lastUpdated}` : 'Carregando...'}
                 </CardDescription>
