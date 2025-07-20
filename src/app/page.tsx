@@ -41,7 +41,7 @@ export default async function Home() {
 
   return (
     <main className="bg-background min-h-screen">
-      <div className="container mx-auto px-2 sm:px-4 py-8">
+      <div className="w-full px-2 sm:px-4 py-8">
         <SpreadsheetManager initialData={data} initialHeaders={headers} initialError={error} />
       </div>
     </main>
