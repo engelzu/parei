@@ -40,7 +40,7 @@ export default async function Home() {
   const { headers, data, error } = await getSheetData();
 
   return (
-    <main className="bg-background min-h-screen">
+    <main className="bg-transparent min-h-screen">
       <div className="w-full px-2 sm:px-4 py-8">
         <SpreadsheetManager initialData={data} initialHeaders={headers} initialError={error} />
       </div>
