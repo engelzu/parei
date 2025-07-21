@@ -291,7 +291,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       <CardHeader>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                <CardTitle className="text-2xl font-bold text-gray-800 dark:text-gray-200">PAREI v1.1</CardTitle>
+                <CardTitle className="text-2xl font-bold text-primary">PAREI v1.1</CardTitle>
                 <CardDescription>
                     {lastUpdated ? `Última atualização: ${lastUpdated}` : 'Carregando...'}
                 </CardDescription>
@@ -397,7 +397,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
               <TableHeader className="sticky top-0 z-10 bg-secondary">
                 <TableRow className="hover:bg-secondary">
                   {visibleHeaders.map(header => (
-                    <TableHead key={header} className="whitespace-nowrap bg-inherit">{header}</TableHead>
+                    <TableHead key={header} className="whitespace-nowrap bg-inherit border-r">{header}</TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
@@ -406,7 +406,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                   paginatedData.map(row => (
                     <TableRow key={row.id}>
                       {visibleHeaders.map(header => (
-                        <TableCell key={`${row.id}-${header}`} className="whitespace-nowrap">
+                        <TableCell key={`${row.id}-${header}`} className="whitespace-nowrap border-r">
                           {header === 'AVANÇO' ? (
                             <div className="flex items-center gap-2">
                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleAdvanceChange(row.id, false)}><ChevronDown className="h-4 w-4"/></Button>
