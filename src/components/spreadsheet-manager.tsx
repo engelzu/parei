@@ -164,7 +164,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const totalPages = Math.ceil(filteredData.length / ROWS_PER_PAGE);
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
-    return filteredData.slice(startIndex, startIndex, startIndex + ROWS_PER_PAGE);
+    return filteredData.slice(startIndex, startIndex + ROWS_PER_PAGE);
   }, [filteredData, currentPage]);
 
   const handleFilterChange = (filterName: string, value: string) => {
