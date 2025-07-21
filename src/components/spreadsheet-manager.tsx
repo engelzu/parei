@@ -392,7 +392,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             <FilterControls />
         </div>
         <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-          <div className="h-[60vh] overflow-auto">
+          <div className="h-[60vh] overflow-auto bg-card">
             <Table className="relative min-w-full">
               <TableHeader className="sticky top-0 z-10 bg-secondary">
                 <TableRow className="hover:bg-secondary">
