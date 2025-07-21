@@ -61,6 +61,7 @@ interface SpreadsheetManagerProps {
 }
 
 const ROWS_PER_PAGE = 15;
+const COLUMN_VISIBILITY_KEY = 'parei-column-visibility';
 
 export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   initialData,
@@ -88,12 +89,32 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   }, [allData]);
 
   useEffect(() => {
+    const savedVisibility = localStorage.getItem(COLUMN_VISIBILITY_KEY);
     const initialVisibility: Record<string, boolean> = {};
-    headers.forEach(header => {
-      initialVisibility[header] = true;
-    });
+    if (savedVisibility) {
+        try {
+            const parsedVisibility = JSON.parse(savedVisibility);
+            headers.forEach(header => {
+                initialVisibility[header] = parsedVisibility[header] ?? true;
+            });
+        } catch (e) {
+            headers.forEach(header => {
+                initialVisibility[header] = true;
+            });
+        }
+    } else {
+        headers.forEach(header => {
+            initialVisibility[header] = true;
+        });
+    }
     setColumnVisibility(initialVisibility);
   }, [headers]);
+
+  useEffect(() => {
+    if (Object.keys(columnVisibility).length > 0) {
+      localStorage.setItem(COLUMN_VISIBILITY_KEY, JSON.stringify(columnVisibility));
+    }
+  }, [columnVisibility]);
 
   const visibleHeaders = useMemo(() => {
     return headers.filter(header => columnVisibility[header]);
