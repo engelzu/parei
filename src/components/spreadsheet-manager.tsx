@@ -405,7 +405,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                   paginatedData.map(row => (
                     <TableRow key={row.id}>
                       {visibleHeaders.map(header => (
-                        <TableCell key={`${row.id}-${header}`} className="whitespace-nowrap max-w-xs truncate">
+                        <TableCell key={`${row.id}-${header}`} className="whitespace-nowrap">
                           {header === 'AVANÇO' ? (
                             <div className="flex items-center gap-2">
                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleAdvanceChange(row.id, false)}><ChevronDown className="h-4 w-4"/></Button>
