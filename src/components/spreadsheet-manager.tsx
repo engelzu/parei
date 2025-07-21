@@ -53,6 +53,7 @@ import {
   Search,
   Columns,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface SpreadsheetManagerProps {
   initialData: SheetRow[];
@@ -163,7 +164,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const totalPages = Math.ceil(filteredData.length / ROWS_PER_PAGE);
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
-    return filteredData.slice(startIndex, startIndex + ROWS_PER_PAGE);
+    return filteredData.slice(startIndex, startIndex, startIndex + ROWS_PER_PAGE);
   }, [filteredData, currentPage]);
 
   const handleFilterChange = (filterName: string, value: string) => {
@@ -404,7 +405,12 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
               <TableBody>
                 {paginatedData.length > 0 ? (
                   paginatedData.map(row => (
-                    <TableRow key={row.id}>
+                    <TableRow 
+                      key={row.id}
+                      className={cn({
+                        'text-destructive': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
+                      })}
+                    >
                       {visibleHeaders.map(header => (
                         <TableCell key={`${row.id}-${header}`} className="whitespace-nowrap border-r">
                           {header === 'AVANÇO' ? (
