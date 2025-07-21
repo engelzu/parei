@@ -127,11 +127,11 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       'RESPONSÁVEL': [],
       'ATUALIZADOR 1': [],
     };
-    if (allData.length > 0) {
+    if (initialData.length > 0) {
       const area = new Set<string>();
       const responsavel = new Set<string>();
       const atualizador1 = new Set<string>();
-      allData.forEach(row => {
+      initialData.forEach(row => {
         if (row['ÁREA']) area.add(String(row['ÁREA']));
         if (row['RESPONSÁVEL']) responsavel.add(String(row['RESPONSÁVEL']));
         if (row['ATUALIZADOR 1(EMAIL)']) atualizador1.add(String(row['ATUALIZADOR 1(EMAIL)']));
@@ -141,10 +141,47 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       options['ATUALIZADOR 1'] = Array.from(atualizador1).sort();
     }
     return options;
+  }, [initialData]);
+
+  const processedData = useMemo(() => {
+    const dataWithCalculations = [...allData];
+    const orderGroups: Record<string, SheetRow[]> = {};
+
+    dataWithCalculations.forEach(row => {
+        const order = String(row['ORDEM'] || '');
+        if (order) {
+            if (!orderGroups[order]) {
+                orderGroups[order] = [];
+            }
+            orderGroups[order].push(row);
+        }
+    });
+
+    Object.values(orderGroups).forEach(group => {
+        const summaryRow = group.find(r => String(r['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim');
+        const childRows = group.filter(r => String(r['RESUMO(SIM/NÃO)']).toLowerCase() === 'não');
+
+        if (summaryRow && childRows.length > 0) {
+            const totalAdvance = childRows.reduce((sum, child) => {
+                const advance = parseInt(String(child['AVANÇO'] || '0').replace('%', ''), 10) || 0;
+                return sum + advance;
+            }, 0);
+            
+            const averageAdvance = Math.round(totalAdvance / childRows.length);
+            summaryRow['AVANÇO'] = `${averageAdvance}%`;
+
+            const summaryRowIndex = dataWithCalculations.findIndex(r => r.id === summaryRow.id);
+            if (summaryRowIndex !== -1) {
+                dataWithCalculations[summaryRowIndex] = summaryRow;
+            }
+        }
+    });
+    
+    return dataWithCalculations;
   }, [allData]);
 
   const filteredData = useMemo(() => {
-    let data = [...allData];
+    let data = [...processedData];
     if (searchTerm) {
       data = data.filter(row =>
         Object.values(row).some(value =>
@@ -159,7 +196,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       return true;
     });
     return data;
-  }, [allData, searchTerm, activeFilters]);
+  }, [processedData, searchTerm, activeFilters]);
 
   const totalPages = Math.ceil(filteredData.length / ROWS_PER_PAGE);
   const paginatedData = useMemo(() => {
@@ -411,19 +448,38 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                         'text-destructive': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
                       })}
                     >
-                      {visibleHeaders.map(header => (
-                        <TableCell key={`${row.id}-${header}`} className="whitespace-nowrap border-r">
-                          {header === 'AVANÇO' ? (
-                            <div className="flex items-center gap-2">
-                               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleAdvanceChange(row.id, false)}><ChevronDown className="h-4 w-4"/></Button>
-                               <span className="w-12 text-center font-medium">{row[header] || '0%'}</span>
-                               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleAdvanceChange(row.id, true)}><ChevronUp className="h-4 w-4"/></Button>
-                            </div>
-                          ) : (
-                            String(row[header] || '-')
-                          )}
-                        </TableCell>
-                      ))}
+                      {visibleHeaders.map(header => {
+                        const isSummaryRow = String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim';
+                        return (
+                          <TableCell key={`${row.id}-${header}`} className="whitespace-nowrap border-r">
+                            {header === 'AVANÇO' ? (
+                              <div className="flex items-center gap-2">
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="h-7 w-7" 
+                                  onClick={() => handleAdvanceChange(row.id, false)}
+                                  disabled={isSummaryRow}
+                                >
+                                  <ChevronDown className="h-4 w-4"/>
+                                </Button>
+                                <span className="w-12 text-center font-medium">{row[header] || '0%'}</span>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="h-7 w-7" 
+                                  onClick={() => handleAdvanceChange(row.id, true)}
+                                  disabled={isSummaryRow}
+                                >
+                                  <ChevronUp className="h-4 w-4"/>
+                                </Button>
+                              </div>
+                            ) : (
+                              String(row[header] || '-')
+                            )}
+                          </TableCell>
+                        )
+                      })}
                     </TableRow>
                   ))
                 ) : (
