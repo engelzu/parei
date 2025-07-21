@@ -52,8 +52,10 @@ import {
   ChevronDown,
   Search,
   Columns,
+  BarChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ProgressChart, type ChartData } from '@/components/progress-chart';
 
 interface SpreadsheetManagerProps {
   initialData: SheetRow[];
@@ -84,6 +86,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [isSaving, startSaving] = useTransition();
   const [isMobileFilterOpen, setMobileFilterOpen] = useState(false);
   const { toast } = useToast();
+  const [currentView, setCurrentView] = useState<'table' | 'chart'>('table');
+
 
   useEffect(() => {
     setLastUpdated(new Date().toLocaleString('pt-BR'));
@@ -144,10 +148,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   }, [initialData]);
 
   const processedData = useMemo(() => {
-    const dataWithCalculations = JSON.parse(JSON.stringify(allData));
+    let dataToProcess = JSON.parse(JSON.stringify(allData));
     const orderGroups: Record<string, SheetRow[]> = {};
 
-    dataWithCalculations.forEach((row: SheetRow) => {
+    dataToProcess.forEach((row: SheetRow) => {
         const order = String(row['ORDEM'] || '');
         if (order) {
             if (!orderGroups[order]) {
@@ -170,14 +174,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             const averageAdvance = Math.round(totalAdvance / childRows.length);
             summaryRow['AVANÇO'] = `${averageAdvance}%`;
 
-            const summaryRowIndex = dataWithCalculations.findIndex((r: SheetRow) => r.id === summaryRow.id);
+            const summaryRowIndex = dataToProcess.findIndex((r: SheetRow) => r.id === summaryRow.id);
             if (summaryRowIndex !== -1) {
-                dataWithCalculations[summaryRowIndex] = summaryRow;
+                dataToProcess[summaryRowIndex] = summaryRow;
             }
         }
     });
     
-    return dataWithCalculations;
+    return dataToProcess;
   }, [allData]);
 
   const filteredData = useMemo(() => {
@@ -197,6 +201,29 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     });
     return data;
   }, [processedData, searchTerm, activeFilters]);
+  
+  const chartData = useMemo<ChartData[]>(() => {
+    const dataByArea: Record<string, { total: number; count: number }> = {};
+
+    filteredData.forEach(row => {
+      const area = String(row['ÁREA'] || 'N/A');
+      if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
+        const advance = parseInt(String(row['AVANÇO'] || '0').replace('%', ''), 10);
+        if (!dataByArea[area]) {
+          dataByArea[area] = { total: 0, count: 0 };
+        }
+        dataByArea[area].total += advance;
+        dataByArea[area].count++;
+      }
+    });
+
+    return Object.keys(dataByArea)
+      .map(area => ({
+        area,
+        avanco: dataByArea[area].count > 0 ? Math.round(dataByArea[area].total / dataByArea[area].count) : 0,
+      }))
+      .sort((a, b) => b.avanco - a.avanco);
+  }, [filteredData]);
 
   const totalPages = Math.ceil(filteredData.length / ROWS_PER_PAGE);
   const paginatedData = useMemo(() => {
@@ -283,13 +310,13 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const FilterControls = ({ inSheet = false }) => (
     <>
       {Object.keys(filterOptions).map(filterName => (
-        <div key={filterName}>
-          <label className="text-sm font-medium text-muted-foreground">{filterName}</label>
+        <div key={filterName} className="flex-1 min-w-[150px]">
+          <Label className="text-xs font-medium text-muted-foreground">{filterName}</Label>
           <Select
             value={activeFilters[filterName]?.[0] || 'all'}
             onValueChange={(value) => handleFilterChange(filterName, value)}
           >
-            <SelectTrigger className="w-full mt-1">
+            <SelectTrigger className="w-full mt-1 h-9 rounded-md">
               <SelectValue placeholder={`Selecionar ${filterName}`} />
             </SelectTrigger>
             <SelectContent>
@@ -309,7 +336,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   if (error) {
     return (
-      <Card>
+      <Card className="border-0 shadow-none sm:border sm:shadow-sm">
         <CardHeader>
             <CardTitle>PAREI v1.1</CardTitle>
         </CardHeader>
@@ -325,7 +352,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   }
 
   return (
-    <Card className="border-0 shadow-none sm:border sm:shadow-sm">
+    <Card className="border-0 shadow-none sm:border sm:shadow-sm bg-transparent">
       <CardHeader>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -337,6 +364,9 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             <div className="flex items-center space-x-2">
                 <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
                     <RotateCw className="mr-2 h-4 w-4" /> Atualizar
+                </Button>
+                 <Button variant="outline" size="sm" onClick={() => setCurrentView(currentView === 'table' ? 'chart' : 'table')}>
+                    <BarChart className="mr-2 h-4 w-4" /> {currentView === 'table' ? 'Gráfico' : 'Tabela'}
                 </Button>
                 <Button size="sm" onClick={handleSave} disabled={isSaving}>
                     {isSaving ? (
@@ -360,13 +390,13 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                       setSearchTerm(e.target.value)
                       setCurrentPage(1)
                     }}
-                    className="pl-10 w-full"
+                    className="pl-10 w-full h-9 rounded-md bg-card"
                 />
             </div>
             <div className="hidden md:flex items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline"><Columns className="mr-2 h-4 w-4" /> Colunas</Button>
+                    <Button variant="outline" size="sm"><Columns className="mr-2 h-4 w-4" /> Colunas</Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-64">
                     <DropdownMenuLabel>Exibir/Ocultar Colunas</DropdownMenuLabel>
@@ -377,7 +407,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                           <DropdownMenuCheckboxItem
                             key={header}
                             className="capitalize"
-                            checked={columnVisibility[header]}
+                            checked={columnVisibility[header] ?? true}
                             onCheckedChange={(value) =>
                               setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
                             }
@@ -389,7 +419,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     </ScrollArea>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="ghost" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar</Button>
+                <Button variant="ghost" size="sm" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar</Button>
             </div>
             <div className="md:hidden">
               <Sheet open={isMobileFilterOpen} onOpenChange={setMobileFilterOpen}>
@@ -408,7 +438,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                     <div key={`mobile-${header}`} className="flex items-center space-x-2">
                                         <Checkbox
                                             id={`mobile-col-${header}`}
-                                            checked={columnVisibility[header]}
+                                            checked={columnVisibility[header] ?? true}
                                             onCheckedChange={(value) =>
                                             setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
                                             }
@@ -426,9 +456,11 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
               </Sheet>
             </div>
         </div>
-        <div className="hidden md:grid md:grid-cols-3 gap-4 mb-4">
+        <div className="hidden md:flex gap-4 mb-4">
             <FilterControls />
         </div>
+        {currentView === 'table' ? (
+        <>
         <ScrollArea className="w-full whitespace-nowrap rounded-md border">
           <div className="h-[60vh] overflow-auto bg-card">
             <Table className="relative min-w-full">
@@ -518,6 +550,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             </Button>
           </div>
         </div>
+        </>
+        ) : (
+          <ProgressChart data={chartData} />
+        )}
       </CardContent>
     </Card>
   );
