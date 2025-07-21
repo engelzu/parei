@@ -370,12 +370,12 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         <div className="hidden md:grid md:grid-cols-3 gap-4 mb-4">
             <FilterControls />
         </div>
-        <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
+        <ScrollArea className="h-[60vh] rounded-md border">
+            <Table className="relative">
+              <TableHeader className="sticky top-0 z-10">
+                <TableRow className="bg-secondary hover:bg-secondary">
                   {visibleHeaders.map(header => (
-                    <TableHead key={header} className="whitespace-nowrap bg-secondary sticky top-0">{header}</TableHead>
+                    <TableHead key={header} className="whitespace-nowrap bg-inherit">{header}</TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
@@ -407,7 +407,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 )}
               </TableBody>
             </Table>
-        </div>
+        </ScrollArea>
         <div className="flex items-center justify-between mt-4 flex-wrap gap-4">
           <p className="text-sm text-muted-foreground">
             Mostrando {paginatedData.length > 0 ? (currentPage - 1) * ROWS_PER_PAGE + 1 : 0} a {Math.min(currentPage * ROWS_PER_PAGE, filteredData.length)} de {filteredData.length} registros.
