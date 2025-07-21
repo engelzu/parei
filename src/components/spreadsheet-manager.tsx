@@ -34,7 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -391,10 +391,11 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         <div className="hidden md:grid md:grid-cols-3 gap-4 mb-4">
             <FilterControls />
         </div>
-        <ScrollArea className="h-[60vh] rounded-md border">
+        <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+          <div className="h-[60vh] overflow-auto">
             <Table className="relative">
-              <TableHeader className="sticky top-0 z-10">
-                <TableRow className="bg-secondary hover:bg-secondary">
+              <TableHeader className="sticky top-0 z-10 bg-secondary">
+                <TableRow className="hover:bg-secondary">
                   {visibleHeaders.map(header => (
                     <TableHead key={header} className="whitespace-nowrap bg-inherit">{header}</TableHead>
                   ))}
@@ -413,7 +414,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleAdvanceChange(row.id, true)}><ChevronUp className="h-4 w-4"/></Button>
                             </div>
                           ) : (
-                            row[header] || '-'
+                            String(row[header] || '-')
                           )}
                         </TableCell>
                       ))}
@@ -428,6 +429,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 )}
               </TableBody>
             </Table>
+          </div>
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
         <div className="flex items-center justify-between mt-4 flex-wrap gap-4">
           <p className="text-sm text-muted-foreground">
