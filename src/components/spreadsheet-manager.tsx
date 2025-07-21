@@ -144,10 +144,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   }, [initialData]);
 
   const processedData = useMemo(() => {
-    const dataWithCalculations = [...allData];
+    const dataWithCalculations = JSON.parse(JSON.stringify(allData));
     const orderGroups: Record<string, SheetRow[]> = {};
 
-    dataWithCalculations.forEach(row => {
+    dataWithCalculations.forEach((row: SheetRow) => {
         const order = String(row['ORDEM'] || '');
         if (order) {
             if (!orderGroups[order]) {
@@ -170,7 +170,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             const averageAdvance = Math.round(totalAdvance / childRows.length);
             summaryRow['AVANÇO'] = `${averageAdvance}%`;
 
-            const summaryRowIndex = dataWithCalculations.findIndex(r => r.id === summaryRow.id);
+            const summaryRowIndex = dataWithCalculations.findIndex((r: SheetRow) => r.id === summaryRow.id);
             if (summaryRowIndex !== -1) {
                 dataWithCalculations[summaryRowIndex] = summaryRow;
             }
