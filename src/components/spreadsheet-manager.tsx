@@ -287,7 +287,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   }
 
   return (
-    <Card>
+    <Card className="border-0 shadow-none sm:border sm:shadow-sm">
       <CardHeader>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -393,7 +393,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         </div>
         <ScrollArea className="w-full whitespace-nowrap rounded-md border">
           <div className="h-[60vh] overflow-auto">
-            <Table className="relative">
+            <Table className="relative min-w-full">
               <TableHeader className="sticky top-0 z-10 bg-secondary">
                 <TableRow className="hover:bg-secondary">
                   {visibleHeaders.map(header => (
