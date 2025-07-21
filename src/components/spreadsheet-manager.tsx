@@ -217,7 +217,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       prevData.map(row => {
         if (row.id === id) {
           const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
-          const newValue = increment ? Math.min(100, current + 1) : Math.max(0, current - 1);
+          const newValue = increment ? Math.min(100, current + 5) : Math.max(0, current - 5);
           return { ...row, 'AVANÇO': `${newValue}%` };
         }
         return row;
