@@ -421,26 +421,26 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 </CardDescription>
             </div>
             <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                    <RotateCw className="mr-2 h-4 w-4" /> Atualizar
+                <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="border-primary/50 uppercase">
+                    <RotateCw className="mr-2 h-4 w-4" /> ATUALIZAR
                 </Button>
-                <div className="flex items-center justify-center p-2 bg-primary text-primary-foreground rounded-md text-sm font-medium">
+                <div className="flex items-center justify-center p-2 bg-primary text-primary-foreground rounded-md text-sm font-medium uppercase">
                   IDs: {filteredData.length}
                 </div>
-                 <Button variant="outline" size="sm" onClick={() => setCurrentView(currentView === 'table' ? 'chart' : 'table')}>
-                    <BarChart className="mr-2 h-4 w-4" /> {currentView === 'table' ? 'Gráfico' : 'Tabela'}
-                </Button>
-                <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                 <Button size="sm" onClick={handleSave} disabled={isSaving} className="uppercase">
                     {isSaving ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                         <Save className="mr-2 h-4 w-4" />
                     )}
-                    Salvar
+                    SALVAR
                 </Button>
-                <Button size="sm" variant="secondary" onClick={handleExport}>
+                <Button variant="outline" size="sm" onClick={() => setCurrentView(currentView === 'table' ? 'chart' : 'table')} className="border-primary/50 uppercase">
+                    <BarChart className="mr-2 h-4 w-4" /> {currentView === 'table' ? 'GRÁFICO' : 'TABELA'}
+                </Button>
+                <Button size="sm" variant="secondary" onClick={handleExport} className="border-primary/50 uppercase">
                     <Download className="mr-2 h-4 w-4" />
-                    Exportar Dados
+                    EXPORTAR
                 </Button>
             </div>
         </div>
