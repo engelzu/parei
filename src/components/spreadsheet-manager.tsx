@@ -96,6 +96,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     'ATUALIZADOR 1': [],
   });
   const [resumoFilter, setResumoFilter] = useState<'all' | 'sim' | 'não'>('all');
+  const [caminhoCriticoFilter, setCaminhoCriticoFilter] = useState<'all' | 'sim' | 'não'>('all');
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [lastUpdated, setLastUpdated] = useState('');
@@ -223,8 +224,13 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       data = data.filter(row => String(row['RESUMO(SIM/NÃO)']).toLowerCase() === resumoFilter);
     }
 
+    // Caminho Crítico filter
+    if (caminhoCriticoFilter !== 'all') {
+      data = data.filter(row => String(row['CAMINHO CRÍTICO(SIM/NÃO)']).toLowerCase() === caminhoCriticoFilter);
+    }
+
     return data;
-  }, [processedData, searchTerm, activeFilters, resumoFilter]);
+  }, [processedData, searchTerm, activeFilters, resumoFilter, caminhoCriticoFilter]);
   
   const chartData = useMemo<ChartData[]>(() => {
     const dataByArea: Record<string, { total: number; count: number }> = {};
@@ -313,6 +319,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     setSearchTerm('');
     setActiveFilters({ 'ÁREA': [], 'RESPONSÁVEL': [], 'ATUALIZADOR 1': [] });
     setResumoFilter('all');
+    setCaminhoCriticoFilter('all');
     setCurrentPage(1);
   };
   
@@ -365,6 +372,25 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
               <SelectItem value="all">Todos (Sim e Não)</SelectItem>
               <SelectItem value="sim" className="focus:bg-accent focus:text-accent-foreground font-bold text-primary">Apenas Resumo (Sim)</SelectItem>
               <SelectItem value="não">Apenas Tarefas (Não)</SelectItem>
+            </SelectContent>
+          </Select>
+      </div>
+      <div className="flex-1 min-w-[150px]">
+          <Label className="text-xs font-medium text-muted-foreground">CAMINHO CRÍTICO</Label>
+          <Select
+            value={caminhoCriticoFilter}
+            onValueChange={(value) => {
+              setCaminhoCriticoFilter(value as 'all' | 'sim' | 'não');
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full mt-1 h-9 rounded-md">
+              <SelectValue placeholder="Selecionar" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos (Sim e Não)</SelectItem>
+              <SelectItem value="sim">Sim</SelectItem>
+              <SelectItem value="não">Não</SelectItem>
             </SelectContent>
           </Select>
       </div>
