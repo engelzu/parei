@@ -438,7 +438,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 <Button variant="outline" size="sm" onClick={() => setCurrentView(currentView === 'table' ? 'chart' : 'table')} className="border-primary/50 uppercase">
                     <BarChart className="mr-2 h-4 w-4" /> {currentView === 'table' ? 'GRÁFICO' : 'TABELA'}
                 </Button>
-                <Button size="sm" variant="secondary" onClick={handleExport} className="border-primary/50 uppercase">
+                <Button size="sm" variant="outline" onClick={handleExport} className="border-primary/50 uppercase">
                     <Download className="mr-2 h-4 w-4" />
                     EXPORTAR
                 </Button>
