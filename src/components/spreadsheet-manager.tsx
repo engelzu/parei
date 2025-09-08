@@ -539,7 +539,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     </ScrollArea>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="ghost" size="sm" onClick={clearFilters} className="uppercase"><Eraser className="mr-2 h-4 w-4" />Limpar Filtros</Button>
             </div>
             <div className="relative w-full max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -598,12 +597,12 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         {currentView === 'table' ? (
         <>
         <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-          <div className="h-[60vh] overflow-auto bg-card">
+          <div className="h-[60vh] overflow-auto">
             <Table className="relative min-w-full">
-              <TableHeader className="sticky top-0 z-10 bg-card">
-                <TableRow className="hover:bg-muted/50">
+              <TableHeader className="sticky top-0 z-10 bg-primary">
+                <TableRow className="border-b-0 hover:bg-primary/90">
                   {visibleHeaders.map(header => (
-                    <TableHead key={header} className="whitespace-nowrap border-r text-center">{header}</TableHead>
+                    <TableHead key={header} className="whitespace-nowrap border-r text-center text-primary-foreground">{header}</TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
@@ -612,7 +611,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                   paginatedData.map(row => (
                     <TableRow 
                       key={row.id}
-                      className={cn({
+                      className={cn('bg-card', {
                         'text-primary font-bold': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
                       })}
                     >
