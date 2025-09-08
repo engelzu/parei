@@ -55,6 +55,7 @@ import {
   Columns,
   BarChart,
   Download,
+  Eraser,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProgressChart, type ChartData } from '@/components/progress-chart';
@@ -356,6 +357,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const FilterControls = ({ inSheet = false }) => (
     <>
+      <Button variant="ghost" size="sm" onClick={clearFilters}><Eraser className="mr-2 h-4 w-4" />Limpar Filtros</Button>
       <div className="flex-1 min-w-[150px]">
           <Label className="text-xs font-medium text-muted-foreground">TIPO DE LINHA (RESUMO)</Label>
           <Select
@@ -524,7 +526,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     <ScrollArea className="h-[calc(100%-80px)]">
                         <div className="space-y-4 p-4">
                             <h3 className="font-semibold">Filtros</h3>
-                            <Button variant="ghost" size="sm" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar Filtros</Button>
                             <FilterControls inSheet={true} />
                             <h3 className="font-semibold pt-4">Colunas Visíveis</h3>
                             <div className="space-y-2">
@@ -543,14 +544,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                             </div>
                         </div>
                     </ScrollArea>
-                    <div className="p-4 border-t">
-                        <Button variant="ghost" onClick={() => { clearFilters(); setMobileFilterOpen(false); }} className="w-full"><X className="mr-2 h-4 w-4" />Limpar Filtros</Button>
-                    </div>
                 </SheetContent>
               </Sheet>
         </div>
         <div className="hidden md:flex flex-wrap items-end gap-4 mb-4">
-            <Button variant="ghost" size="sm" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar Filtros</Button>
             <FilterControls />
         </div>
         {currentView === 'table' ? (
