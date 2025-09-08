@@ -45,7 +45,6 @@ import type { SheetRow } from '@/lib/types';
 import {
   RotateCw,
   Filter,
-  X,
   Save,
   Loader2,
   AlertTriangle,
@@ -56,6 +55,7 @@ import {
   BarChart,
   Download,
   Eraser,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProgressChart, type ChartData } from '@/components/progress-chart';
@@ -228,7 +228,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
         if (summaryRow && childRows.length > 0) {
             const totalAdvance = childRows.reduce((sum, child) => {
-                const advance = parseInt(String(child['AVANÇO'] || '0').replace('%', ''), 10) || 0;
+                const advance = parseFloat(String(child['AVANÇO'] || '0').replace('%', '')) || 0;
                 return sum + advance;
             }, 0);
             
@@ -276,6 +276,26 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     return data;
   }, [processedData, searchTerm, activeFilters, resumoFilter, caminhoCriticoFilter]);
   
+  const progressByUpdater = useMemo(() => {
+    const selectedUpdater = activeFilters['ATUALIZADOR 1']?.[0];
+    if (!selectedUpdater || selectedUpdater === 'all') return null;
+
+    const updaterTasks = initialData.filter(
+      (row) =>
+        String(row['ATUALIZADOR 1(EMAIL)']) === selectedUpdater &&
+        String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não'
+    );
+
+    if (updaterTasks.length === 0) return 0;
+
+    const totalAdvance = updaterTasks.reduce((sum, task) => {
+      const advance = parseFloat(String(task['AVANÇO'] || '0').replace('%', ''));
+      return sum + (isNaN(advance) ? 0 : advance);
+    }, 0);
+
+    return Math.round(totalAdvance / updaterTasks.length);
+  }, [activeFilters, initialData]);
+
   const chartData = useMemo<ChartData[]>(() => {
     const dataByArea: Record<string, { total: number; count: number }> = {};
 
@@ -400,7 +420,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const FilterControls = ({ inSheet = false }) => (
     <>
-      <Button variant="ghost" size="sm" onClick={clearFilters}><Eraser className="mr-2 h-4 w-4" />Limpar Filtros</Button>
       <div className="flex-1 min-w-[150px] text-center">
           <Label className="text-xs font-medium text-primary">TIPO DE LINHA (RESUMO)</Label>
           <Select
@@ -439,25 +458,62 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             </SelectContent>
           </Select>
       </div>
-      {Object.keys(filterOptions).map(filterName => (
-        <div key={filterName} className="flex-1 min-w-[150px] text-center">
-          <Label className="text-xs font-medium text-primary">{filterName}</Label>
-          <Select
-            value={activeFilters[filterName]?.[0] || 'all'}
-            onValueChange={(value) => handleFilterChange(filterName, value)}
-          >
-            <SelectTrigger className="w-full mt-1 h-9 rounded-md">
-              <SelectValue placeholder={`Selecionar ${filterName}`} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {filterOptions[filterName as keyof typeof filterOptions].map(option => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ))}
+      <div className="flex-1 min-w-[150px] text-center">
+        <Label className="text-xs font-medium text-primary">ÁREA</Label>
+        <Select
+          value={activeFilters['ÁREA']?.[0] || 'all'}
+          onValueChange={(value) => handleFilterChange('ÁREA', value)}
+        >
+          <SelectTrigger className="w-full mt-1 h-9 rounded-md">
+            <SelectValue placeholder="Selecionar ÁREA" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {filterOptions['ÁREA'].map(option => (
+              <SelectItem key={option} value={option}>{option}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+       <div className="flex-1 min-w-[150px] text-center">
+        <Label className="text-xs font-medium text-primary">RESPONSÁVEL</Label>
+        <Select
+          value={activeFilters['RESPONSÁVEL']?.[0] || 'all'}
+          onValueChange={(value) => handleFilterChange('RESPONSÁVEL', value)}
+        >
+          <SelectTrigger className="w-full mt-1 h-9 rounded-md">
+            <SelectValue placeholder="Selecionar RESPONSÁVEL" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {filterOptions['RESPONSÁVEL'].map(option => (
+              <SelectItem key={option} value={option}>{option}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex-1 min-w-[150px] text-center">
+        {progressByUpdater !== null && (
+            <div className="text-xs font-bold text-primary mb-1">
+                AVANÇO MÉDIO: {progressByUpdater}%
+            </div>
+        )}
+        <Label className="text-xs font-medium text-primary">ATUALIZADOR 1</Label>
+        <Select
+          value={activeFilters['ATUALIZADOR 1']?.[0] || 'all'}
+          onValueChange={(value) => handleFilterChange('ATUALIZADOR 1', value)}
+        >
+          <SelectTrigger className="w-full mt-1 h-9 rounded-md">
+            <SelectValue placeholder="Selecionar ATUALIZADOR 1" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {filterOptions['ATUALIZADOR 1'].map(option => (
+              <SelectItem key={option} value={option}>{option}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       {inSheet && (
           <Button onClick={() => setMobileFilterOpen(false)} className="w-full">Aplicar Filtros</Button>
       )}
@@ -513,6 +569,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     <Download className="mr-2 h-4 w-4" />
                     EXPORTAR
                 </Button>
+                <Button variant="outline" size="sm" onClick={clearFilters} className="border-primary/50 uppercase">
+                    <Eraser className="mr-2 h-4 w-4" />
+                    Limpar Filtros
+                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="border-primary/50 uppercase"><Columns className="mr-2 h-4 w-4" /> Colunas</Button>
@@ -530,7 +590,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                             onCheckedChange={(value) =>
                               setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
                             }
-                            onSelect={(e) => e.preventDefault()}
+                             onSelect={(e) => e.preventDefault()}
                           >
                             {header}
                           </DropdownMenuCheckboxItem>
@@ -591,7 +651,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 </SheetContent>
               </Sheet>
         </div>
-        <div className="hidden md:flex flex-wrap items-end gap-4 mb-4">
+        <div className="hidden md:flex flex-wrap items-end gap-4 mb-4 relative">
             <FilterControls />
         </div>
         {currentView === 'table' ? (
