@@ -650,7 +650,12 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                         }
 
                         return (
-                          <TableCell key={`${row.id}-${header}`} className="whitespace-nowrap border-r text-center">
+                          <TableCell 
+                            key={`${row.id}-${header}`} 
+                            className={cn("border-r text-center", 
+                              header === 'NOME DA TAREFA' ? 'whitespace-normal max-w-sm' : 'whitespace-nowrap'
+                            )}
+                          >
                             {cellContent}
                           </TableCell>
                         )
