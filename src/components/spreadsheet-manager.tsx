@@ -530,6 +530,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                             onCheckedChange={(value) =>
                               setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
                             }
+                            onSelect={(e) => e.preventDefault()}
                           >
                             {header}
                           </DropdownMenuCheckboxItem>
