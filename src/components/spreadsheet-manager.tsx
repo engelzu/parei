@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useTransition, type FC } from 'react';
+import * as XLSX from 'xlsx';
 import {
   Table,
   TableBody,
@@ -53,6 +54,7 @@ import {
   Search,
   Columns,
   BarChart,
+  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProgressChart, type ChartData } from '@/components/progress-chart';
@@ -291,6 +293,21 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       }
     });
   };
+
+  const handleExport = () => {
+    const dataToExport = filteredData.map(row => {
+        const newRow: Record<string, any> = {};
+        headers.forEach(header => {
+            newRow[header] = row[header];
+        });
+        return newRow;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport, { header: headers });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Dados");
+    XLSX.writeFile(workbook, "dados_exportados.xlsx");
+  };
   
   const clearFilters = () => {
     setSearchTerm('');
@@ -420,6 +437,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                         <Save className="mr-2 h-4 w-4" />
                     )}
                     Salvar
+                </Button>
+                <Button size="sm" variant="secondary" onClick={handleExport}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Exportar Dados
                 </Button>
             </div>
         </div>
