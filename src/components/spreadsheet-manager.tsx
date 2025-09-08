@@ -356,7 +356,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       <CardHeader>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                <CardTitle className="text-2xl font-bold text-primary">PAREI v1.1</CardTitle>
+                <CardTitle className="text-2xl font-bold text-primary">PAREI v1.1 - GESTOR DE PARADAS INDUSTRIAIS</CardTitle>
                 <CardDescription>
                     {lastUpdated ? `Última atualização: ${lastUpdated}` : 'Carregando...'}
                 </CardDescription>
