@@ -407,6 +407,9 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
                     <RotateCw className="mr-2 h-4 w-4" /> Atualizar
                 </Button>
+                <div className="flex items-center justify-center p-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
+                  IDs: {filteredData.length}
+                </div>
                  <Button variant="outline" size="sm" onClick={() => setCurrentView(currentView === 'table' ? 'chart' : 'table')}>
                     <BarChart className="mr-2 h-4 w-4" /> {currentView === 'table' ? 'Gráfico' : 'Tabela'}
                 </Button>
