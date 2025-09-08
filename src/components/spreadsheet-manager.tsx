@@ -93,6 +93,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     'RESPONSÁVEL': [],
     'ATUALIZADOR 1': [],
   });
+  const [resumoFilter, setResumoFilter] = useState<'all' | 'sim' | 'não'>('all');
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [lastUpdated, setLastUpdated] = useState('');
@@ -199,6 +200,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const filteredData = useMemo(() => {
     let data = [...processedData];
+    // Search filter
     if (searchTerm) {
       data = data.filter(row =>
         Object.values(row).some(value =>
@@ -206,14 +208,21 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         )
       );
     }
+    // Column filters
     data = data.filter(row => {
       if (activeFilters['ÁREA'].length > 0 && !activeFilters['ÁREA'].includes(String(row['ÁREA']))) return false;
       if (activeFilters['RESPONSÁVEL'].length > 0 && !activeFilters['RESPONSÁVEL'].includes(String(row['RESPONSÁVEL']))) return false;
       if (activeFilters['ATUALIZADOR 1'].length > 0 && !activeFilters['ATUALIZADOR 1'].includes(String(row['ATUALIZADOR 1(EMAIL)']))) return false;
       return true;
     });
+
+    // Resumo filter
+    if (resumoFilter !== 'all') {
+      data = data.filter(row => String(row['RESUMO(SIM/NÃO)']).toLowerCase() === resumoFilter);
+    }
+
     return data;
-  }, [processedData, searchTerm, activeFilters]);
+  }, [processedData, searchTerm, activeFilters, resumoFilter]);
   
   const chartData = useMemo<ChartData[]>(() => {
     const dataByArea: Record<string, { total: number; count: number }> = {};
@@ -286,6 +295,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const clearFilters = () => {
     setSearchTerm('');
     setActiveFilters({ 'ÁREA': [], 'RESPONSÁVEL': [], 'ATUALIZADOR 1': [] });
+    setResumoFilter('all');
     setCurrentPage(1);
   };
   
@@ -322,6 +332,25 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const FilterControls = ({ inSheet = false }) => (
     <>
+      <div className="flex-1 min-w-[150px]">
+          <Label className="text-xs font-medium text-muted-foreground">TIPO DE LINHA (RESUMO)</Label>
+          <Select
+            value={resumoFilter}
+            onValueChange={(value) => {
+              setResumoFilter(value as 'all' | 'sim' | 'não');
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full mt-1 h-9 rounded-md">
+              <SelectValue placeholder="Selecionar Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos (Sim e Não)</SelectItem>
+              <SelectItem value="sim">Apenas Resumo (Sim)</SelectItem>
+              <SelectItem value="não">Apenas Tarefas (Não)</SelectItem>
+            </SelectContent>
+          </Select>
+      </div>
       {Object.keys(filterOptions).map(filterName => (
         <div key={filterName} className="flex-1 min-w-[150px]">
           <Label className="text-xs font-medium text-muted-foreground">{filterName}</Label>
@@ -469,7 +498,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
               </Sheet>
             </div>
         </div>
-        <div className="hidden md:flex gap-4 mb-4">
+        <div className="hidden md:flex flex-wrap gap-4 mb-4">
             <FilterControls />
         </div>
         {currentView === 'table' ? (
