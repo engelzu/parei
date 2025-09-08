@@ -498,7 +498,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       </CardHeader>
       <CardContent>
         <div className="flex flex-col md:flex-row gap-2 mb-4">
-            <div className="relative flex-grow">
+            <div className="relative w-full max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                     placeholder="Pesquisar em toda a planilha..."
@@ -507,12 +507,19 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                       setSearchTerm(e.target.value)
                       setCurrentPage(1)
                     }}
-                    className="pl-10 w-full h-9 rounded-md bg-card"
+                    className="pl-10 pr-10 w-full h-9 rounded-md bg-card"
                 />
+                {searchTerm && (
+                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                )}
             </div>
-            <div className="hidden md:flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar</Button>
+            
+            <div className="hidden md:flex flex-1 items-center justify-end">
+                 <Button variant="ghost" size="sm" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar Filtros</Button>
             </div>
+
             <div className="md:hidden">
               <Sheet open={isMobileFilterOpen} onOpenChange={setMobileFilterOpen}>
                 <SheetTrigger asChild>
