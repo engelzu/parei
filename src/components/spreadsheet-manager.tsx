@@ -493,13 +493,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     </ScrollArea>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <Button variant="ghost" size="sm" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar Filtros</Button>
             </div>
         </div>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col md:flex-row gap-2 mb-4">
              <div className="flex-none flex items-center gap-2">
-                <div className="relative">
+                <div className="relative w-full max-w-[200px]">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Pesquisar..."
@@ -508,7 +509,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                           setSearchTerm(e.target.value)
                           setCurrentPage(1)
                         }}
-                        className="pl-10 pr-10 w-full h-9 rounded-md bg-card max-w-[200px]"
+                        className="pl-10 pr-10 w-full h-9 rounded-md bg-card"
                     />
                     {searchTerm && (
                         <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
@@ -516,7 +517,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                         </Button>
                     )}
                 </div>
-                 <Button variant="ghost" size="sm" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar Filtros</Button>
             </div>
             
             <div className="hidden md:flex flex-1 items-center justify-end">
