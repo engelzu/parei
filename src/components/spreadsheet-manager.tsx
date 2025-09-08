@@ -66,13 +66,26 @@ interface SpreadsheetManagerProps {
 const ROWS_PER_PAGE = 15;
 const COLUMN_VISIBILITY_KEY = 'parei-column-visibility';
 
+const reorderHeaders = (headers: string[]): string[] => {
+    const newHeaders = [...headers];
+    const avancoIndex = newHeaders.indexOf('AVANÇO');
+    const nomeTarefaIndex = newHeaders.indexOf('NOME DA TAREFA');
+
+    if (avancoIndex !== -1 && nomeTarefaIndex !== -1 && avancoIndex !== nomeTarefaIndex + 1) {
+        const [avancoHeader] = newHeaders.splice(avancoIndex, 1);
+        newHeaders.splice(nomeTarefaIndex + 1, 0, avancoHeader);
+    }
+    return newHeaders;
+};
+
+
 export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   initialData,
   initialHeaders,
   initialError,
 }) => {
   const [allData, setAllData] = useState<SheetRow[]>(initialData);
-  const [headers] = useState<string[]>(initialHeaders);
+  const [headers] = useState<string[]>(() => reorderHeaders(initialHeaders));
   const [error, setError] = useState<string | null>(initialError);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({
@@ -338,7 +351,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     return (
       <Card className="border-0 shadow-none sm:border sm:shadow-sm">
         <CardHeader>
-            <CardTitle>PAREI v1.1</CardTitle>
+            <CardTitle>PAREI v1.1 - GESTOR DE PARADAS INDUSTRIAIS</CardTitle>
         </CardHeader>
         <CardContent>
             <Alert variant="destructive">
