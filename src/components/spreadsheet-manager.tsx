@@ -493,17 +493,16 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     </ScrollArea>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="ghost" size="sm" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar Filtros</Button>
             </div>
         </div>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col md:flex-row gap-2 mb-4">
              <div className="flex-none flex items-center gap-2">
-                <div className="relative w-full max-w-[200px]">
+                <div className="relative w-full max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Pesquisar..."
+                        placeholder="Pesquisar em toda a base..."
                         value={searchTerm}
                         onChange={e => {
                           setSearchTerm(e.target.value)
@@ -533,6 +532,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     <ScrollArea className="h-[calc(100%-80px)]">
                         <div className="space-y-4 p-4">
                             <h3 className="font-semibold">Filtros</h3>
+                            <Button variant="ghost" size="sm" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar Filtros</Button>
                             <FilterControls inSheet={true} />
                             <h3 className="font-semibold pt-4">Colunas Visíveis</h3>
                             <div className="space-y-2">
@@ -558,7 +558,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
               </Sheet>
             </div>
         </div>
-        <div className="hidden md:flex flex-wrap gap-4 mb-4">
+        <div className="hidden md:flex flex-wrap items-end gap-4 mb-4">
+            <Button variant="ghost" size="sm" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar Filtros</Button>
             <FilterControls />
         </div>
         {currentView === 'table' ? (
