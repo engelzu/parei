@@ -358,8 +358,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const FilterControls = ({ inSheet = false }) => (
     <>
       <Button variant="ghost" size="sm" onClick={clearFilters}><Eraser className="mr-2 h-4 w-4" />Limpar Filtros</Button>
-      <div className="flex-1 min-w-[150px]">
-          <Label className="text-xs font-medium text-muted-foreground">TIPO DE LINHA (RESUMO)</Label>
+      <div className="flex-1 min-w-[150px] text-center">
+          <Label className="text-xs font-medium text-primary">TIPO DE LINHA (RESUMO)</Label>
           <Select
             value={resumoFilter}
             onValueChange={(value) => {
@@ -377,8 +377,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             </SelectContent>
           </Select>
       </div>
-      <div className="flex-1 min-w-[150px]">
-          <Label className="text-xs font-medium text-muted-foreground">CAMINHO CRÍTICO</Label>
+      <div className="flex-1 min-w-[150px] text-center">
+          <Label className="text-xs font-medium text-primary">CAMINHO CRÍTICO</Label>
           <Select
             value={caminhoCriticoFilter}
             onValueChange={(value) => {
@@ -397,8 +397,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
           </Select>
       </div>
       {Object.keys(filterOptions).map(filterName => (
-        <div key={filterName} className="flex-1 min-w-[150px]">
-          <Label className="text-xs font-medium text-muted-foreground">{filterName}</Label>
+        <div key={filterName} className="flex-1 min-w-[150px] text-center">
+          <Label className="text-xs font-medium text-primary">{filterName}</Label>
           <Select
             value={activeFilters[filterName]?.[0] || 'all'}
             onValueChange={(value) => handleFilterChange(filterName, value)}
