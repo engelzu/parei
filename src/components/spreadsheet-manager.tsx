@@ -533,7 +533,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
               <TableHeader className="sticky top-0 z-10 bg-secondary">
                 <TableRow className="hover:bg-secondary">
                   {visibleHeaders.map(header => (
-                    <TableHead key={header} className="whitespace-nowrap bg-inherit border-r">{header}</TableHead>
+                    <TableHead key={header} className="whitespace-nowrap bg-inherit border-r text-center">{header}</TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
@@ -549,9 +549,9 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                       {visibleHeaders.map(header => {
                         const isSummaryRow = String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim';
                         return (
-                          <TableCell key={`${row.id}-${header}`} className="whitespace-nowrap border-r">
+                          <TableCell key={`${row.id}-${header}`} className="whitespace-nowrap border-r text-center">
                             {header === 'AVANÇO' ? (
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center justify-center gap-2">
                                 <Button 
                                   size="icon" 
                                   variant="ghost" 
