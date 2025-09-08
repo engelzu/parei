@@ -468,27 +468,9 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     <Download className="mr-2 h-4 w-4" />
                     EXPORTAR
                 </Button>
-            </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col md:flex-row gap-2 mb-4">
-            <div className="relative flex-grow">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Pesquisar em toda a planilha..."
-                    value={searchTerm}
-                    onChange={e => {
-                      setSearchTerm(e.target.value)
-                      setCurrentPage(1)
-                    }}
-                    className="pl-10 w-full h-9 rounded-md bg-card"
-                />
-            </div>
-            <div className="hidden md:flex items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm"><Columns className="mr-2 h-4 w-4" /> Colunas</Button>
+                    <Button variant="outline" size="sm" className="border-primary/50 uppercase"><Columns className="mr-2 h-4 w-4" /> Colunas</Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-64">
                     <DropdownMenuLabel>Exibir/Ocultar Colunas</DropdownMenuLabel>
@@ -511,6 +493,24 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     </ScrollArea>
                   </DropdownMenuContent>
                 </DropdownMenu>
+            </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col md:flex-row gap-2 mb-4">
+            <div className="relative flex-grow">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Pesquisar em toda a planilha..."
+                    value={searchTerm}
+                    onChange={e => {
+                      setSearchTerm(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    className="pl-10 w-full h-9 rounded-md bg-card"
+                />
+            </div>
+            <div className="hidden md:flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar</Button>
             </div>
             <div className="md:hidden">
