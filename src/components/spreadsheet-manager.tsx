@@ -363,7 +363,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos (Sim e Não)</SelectItem>
-              <SelectItem value="sim">Apenas Resumo (Sim)</SelectItem>
+              <SelectItem value="sim" className="focus:bg-accent focus:text-accent-foreground font-bold text-primary">Apenas Resumo (Sim)</SelectItem>
               <SelectItem value="não">Apenas Tarefas (Não)</SelectItem>
             </SelectContent>
           </Select>
