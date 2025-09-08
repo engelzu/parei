@@ -522,7 +522,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     <TableRow 
                       key={row.id}
                       className={cn({
-                        'text-destructive font-bold': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
+                        'text-primary font-bold': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
                       })}
                     >
                       {visibleHeaders.map(header => {
