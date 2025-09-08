@@ -81,6 +81,49 @@ const reorderHeaders = (headers: string[]): string[] => {
     return newHeaders;
 };
 
+// Function to convert Excel serial number to JavaScript Date
+function excelSerialToDate(serial: number) {
+    if (typeof serial !== 'number' || isNaN(serial)) {
+        return null;
+    }
+    // Excel's epoch starts on 1900-01-01, but it incorrectly thinks 1900 was a leap year.
+    // JavaScript's epoch is 1970-01-01.
+    // The number of days between 1900-01-01 and 1970-01-01 is 25569.
+    // We subtract 2 because of the leap year bug and the fact that Excel starts at day 1, not 0.
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    const date = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
+    
+    // Check if the resulting date is valid
+    if (isNaN(date.getTime())) {
+        return null;
+    }
+    return date;
+}
+
+function formatDateValue(value: any): string {
+    if (typeof value === 'number') {
+        const date = excelSerialToDate(value);
+        if (date) {
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const year = date.getUTCFullYear();
+            return `${day}/${month}/${year}`;
+        }
+    }
+    if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
+        try {
+            const date = new Date(value);
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const year = date.getUTCFullYear();
+            return `${day}/${month}/${year}`;
+        } catch (e) {
+            // Not a valid date string, return as is
+        }
+    }
+    return String(value || '-');
+}
+
 
 export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   initialData,
@@ -573,9 +616,12 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     >
                       {visibleHeaders.map(header => {
                         const isSummaryRow = String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim';
-                        return (
-                          <TableCell key={`${row.id}-${header}`} className="whitespace-nowrap border-r text-center">
-                            {header === 'AVANÇO' ? (
+                        let cellContent;
+
+                        if (header === 'INÍCIO DA LINHA DE BASE' || header === 'TÉRMINO DA LINHA DE BASE') {
+                            cellContent = formatDateValue(row[header]);
+                        } else if (header === 'AVANÇO') {
+                            cellContent = (
                               <div className="flex items-center justify-center gap-2">
                                 <Button 
                                   size="icon" 
@@ -597,9 +643,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                   <ChevronUp className="h-4 w-4"/>
                                 </Button>
                               </div>
-                            ) : (
-                              String(row[header] || '-')
-                            )}
+                            );
+                        } else {
+                            cellContent = String(row[header] || '-');
+                        }
+
+                        return (
+                          <TableCell key={`${row.id}-${header}`} className="whitespace-nowrap border-r text-center">
+                            {cellContent}
                           </TableCell>
                         )
                       })}
