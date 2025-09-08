@@ -116,16 +116,16 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         try {
             const parsedVisibility = JSON.parse(savedVisibility);
             headers.forEach(header => {
-                initialVisibility[header] = parsedVisibility[header] ?? true;
+                initialVisibility[header] = parsedVisibility[header] ?? !header.toLowerCase().startsWith('curva');
             });
         } catch (e) {
             headers.forEach(header => {
-                initialVisibility[header] = true;
+                initialVisibility[header] = !header.toLowerCase().startsWith('curva');
             });
         }
     } else {
         headers.forEach(header => {
-            initialVisibility[header] = true;
+            initialVisibility[header] = !header.toLowerCase().startsWith('curva');
         });
     }
     setColumnVisibility(initialVisibility);
