@@ -4,13 +4,11 @@ import type { SheetRow, Project } from '@/lib/types';
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwVAMAIp7RbVAzb3YGkIZq8Kr_HBEfFnx1iBa_981c4kb0bdmAJJAEhbHGZBPwwe1Hdpg/exec';
 
-// Lista de projetos disponíveis. Adicione novos projetos aqui.
-const availableProjects: Project[] = [
+// A lista de projetos agora será gerenciada no lado do cliente.
+// Esta é uma lista inicial padrão caso o localStorage esteja vazio.
+const defaultProjects: Project[] = [
   { name: 'PAREI v1.1 - GESTOR DE PARADAS', id: '1hs8LtsybSCLIsfO-4G-EtZpBrIzf339PeuhdjOU5UeI' },
-  // Exemplo de como adicionar outro projeto:
-  // { name: 'Manutenção Preventiva 2025', id: 'SEU_OUTRO_SHEET_ID_AQUI' },
 ];
-
 
 async function getSheetData(sheetId: string) {
   if (!sheetId) {
@@ -93,9 +91,8 @@ async function getLogData(sheetId: string) {
 
 
 export default async function Home({ searchParams }: { searchParams?: { [key: string]: string | undefined } }) {
-  const selectedProjectName = searchParams?.projeto;
-  const currentProject = availableProjects.find(p => p.name === selectedProjectName) || availableProjects[0];
-  const currentSheetId = currentProject.id;
+  // O ID da planilha é passado pela URL, o servidor não precisa mais da lista completa.
+  const currentSheetId = searchParams?.sheetId || defaultProjects[0].id;
   
   const { headers, data, error } = await getSheetData(currentSheetId);
   const logData = await getLogData(currentSheetId);
@@ -108,8 +105,7 @@ export default async function Home({ searchParams }: { searchParams?: { [key: st
           initialHeaders={headers} 
           initialError={error}
           initialLogData={logData}
-          availableProjects={availableProjects}
-          currentProject={currentProject}
+          currentSheetId={currentSheetId}
         />
       </div>
     </main>

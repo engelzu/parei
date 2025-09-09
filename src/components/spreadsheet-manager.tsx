@@ -1,9 +1,12 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, useTransition, type FC, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
 import {
   Table,
   TableBody,
@@ -26,6 +29,8 @@ import {
   DialogTitle,
   DialogDescription,
   DialogTrigger,
+  DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +54,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { useToast } from "@/hooks/use-toast";
 import { saveDataToSheet, saveSingleRow } from '@/app/actions';
 import type { SheetRow, Project } from '@/lib/types';
@@ -70,7 +76,7 @@ import {
   TableIcon,
   AreaChart,
   History,
-  CheckCircle2,
+  PlusCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProgressChart, type ChartData } from '@/components/progress-chart';
@@ -84,12 +90,21 @@ interface SpreadsheetManagerProps {
   initialHeaders: string[];
   initialError: string | null;
   initialLogData?: any[];
-  availableProjects: Project[];
-  currentProject: Project;
+  currentSheetId: string;
 }
 
 const ROWS_PER_PAGE = 15;
 const COLUMN_VISIBILITY_KEY = 'parei-column-visibility';
+const PROJECTS_STORAGE_KEY = 'parei-projects-list';
+
+const defaultProjects: Project[] = [
+  { name: 'PAREI v1.1 - GESTOR DE PARADAS', id: '1hs8LtsybSCLIsfO-4G-EtZpBrIzf339PeuhdjOU5UeI' },
+];
+
+const projectSchema = z.object({
+  name: z.string().min(3, { message: "O nome do projeto deve ter pelo menos 3 caracteres." }),
+  id: z.string().min(20, { message: "O ID da planilha parece inválido. Verifique o link." }),
+});
 
 
 // Function to convert Excel serial number to JavaScript Date
@@ -171,8 +186,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   initialHeaders,
   initialError,
   initialLogData = [],
-  availableProjects,
-  currentProject,
+  currentSheetId,
 }) => {
   const [allData, setAllData] = useState<SheetRow[]>(initialData);
   const [headers] = useState<string[]>(() => reorderHeaders(initialHeaders));
@@ -197,6 +211,47 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const router = useRouter();
 
+  const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
+  const [isAddProjectDialogOpen, setAddProjectDialogOpen] = useState(false);
+  const currentProject = useMemo(() => availableProjects.find(p => p.id === currentSheetId), [availableProjects, currentSheetId]);
+
+  const form = useForm<z.infer<typeof projectSchema>>({
+    resolver: zodResolver(projectSchema),
+    defaultValues: {
+      name: "",
+      id: "",
+    },
+  });
+
+  useEffect(() => {
+    try {
+      const storedProjects = localStorage.getItem(PROJECTS_STORAGE_KEY);
+      if (storedProjects) {
+        setAvailableProjects(JSON.parse(storedProjects));
+      } else {
+        setAvailableProjects(defaultProjects);
+        localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(defaultProjects));
+      }
+    } catch (error) {
+      console.error("Failed to load projects from localStorage", error);
+      setAvailableProjects(defaultProjects);
+    }
+  }, []);
+
+  const handleAddProject = (values: z.infer<typeof projectSchema>) => {
+    const newProject: Project = { name: values.name, id: values.id };
+    const updatedProjects = [...availableProjects, newProject];
+    setAvailableProjects(updatedProjects);
+    localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updatedProjects));
+    toast({
+      title: "Projeto Adicionado!",
+      description: `O projeto "${newProject.name}" foi salvo.`,
+    });
+    form.reset();
+    setAddProjectDialogOpen(false);
+    // Navigate to the new project page
+    window.location.href = `/?sheetId=${newProject.id}`;
+  };
 
   useEffect(() => {
     setLastUpdated(new Date().toLocaleString('pt-BR'));
@@ -537,16 +592,13 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
           return { dailyLogChartData: [], dailyLogChartKeys: [] };
       }
 
-      // 1. Map tasks to their areas
       const taskToAreaMap = initialData.reduce((acc, row) => {
           if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não' && row.id) {
               acc[String(row.id)] = String(row['ÁREA'] || 'N/A');
           }
           return acc;
       }, {} as Record<string, string>);
-      const allAreas = Array.from(new Set(Object.values(taskToAreaMap))).sort();
 
-      // 2. Group logs by date
       const logsByDate: Record<string, { taskId: string; progress: number }[]> = {};
       initialLogData.forEach(log => {
           const taskId = String(log.ID_TAREFA);
@@ -555,13 +607,12 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                   const timestamp = new Date(log.TIMESTAMP);
                   if (isNaN(timestamp.getTime())) return;
                   
-                  const date = new Date(timestamp.getUTCFullYear(), timestamp.getUTCMonth(), timestamp.getUTCDate());
-                  const dateStr = date.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit', timeZone: 'UTC' });
-                  
-                  if (!logsByDate[dateStr]) {
-                      logsByDate[dateStr] = [];
+                  const dateKey = new Date(timestamp.getUTCFullYear(), timestamp.getUTCMonth(), timestamp.getUTCDate()).toISOString().split('T')[0];
+
+                  if (!logsByDate[dateKey]) {
+                      logsByDate[dateKey] = [];
                   }
-                  logsByDate[dateStr].push({
+                  logsByDate[dateKey].push({
                       taskId,
                       progress: parseFloat(String(log.AVANCO_PERCENTUAL)),
                   });
@@ -569,37 +620,29 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
           }
       });
       
-      // 3. Get sorted list of dates with logs
-      const sortedDates = Object.keys(logsByDate).sort((a, b) => {
-          const [dayA, monthA, yearA] = a.split('/');
-          const [dayB, monthB, yearB] = b.split('/');
-          return new Date(`20${yearA}-${monthA}-${dayA}`).getTime() - new Date(`20${yearB}-${monthB}-${dayB}`).getTime();
-      });
+      const sortedDates = Object.keys(logsByDate).sort();
 
       if (sortedDates.length === 0) {
           return { dailyLogChartData: [], dailyLogChartKeys: [] };
       }
-
-      // 4. Build cumulative progress state day by day
+      
+      const allAreas = Array.from(new Set(Object.values(taskToAreaMap))).sort();
       const dailyStates: DailyProgressChartData[] = [];
       const currentTaskProgress: Record<string, number> = {};
-      
-      // Initialize all tasks with 0 progress
+
       Object.keys(taskToAreaMap).forEach(taskId => {
           currentTaskProgress[taskId] = 0;
       });
 
-      for (const date of sortedDates) {
-          const todaysLogs = logsByDate[date] || [];
+      for (const dateKey of sortedDates) {
+          const todaysLogs = logsByDate[dateKey] || [];
           
-          // Update the progress state with the latest log for each task on this day
           todaysLogs.forEach(log => {
               if (typeof log.progress === 'number' && !isNaN(log.progress)) {
                   currentTaskProgress[log.taskId] = log.progress;
               }
           });
 
-          // Calculate the average progress for each area based on the *current cumulative state*
           const progressByArea: Record<string, { total: number; count: number }> = {};
           allAreas.forEach(area => {
               progressByArea[area] = { total: 0, count: 0 };
@@ -613,8 +656,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
               }
           });
           
-          // Create the chart entry for the current date
-          const chartEntry: DailyProgressChartData = { date };
+          const [year, month, day] = dateKey.split('-');
+          const chartEntry: DailyProgressChartData = { date: `${day}/${month}/${year.slice(2)}` };
           allAreas.forEach(area => {
               const areaData = progressByArea[area];
               chartEntry[area] = areaData.count > 0 ? Math.round(areaData.total / areaData.count) : 0;
@@ -649,11 +692,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     setCurrentPage(1);
   };
   
-  const handleProjectChange = (projectName: string) => {
-    const selectedProject = availableProjects.find(p => p.name === projectName);
+  const handleProjectChange = (projectId: string) => {
+    const selectedProject = availableProjects.find(p => p.id === projectId);
     if (selectedProject) {
-        // Use window.location to ensure a full page reload with new data
-        window.location.href = `/?projeto=${encodeURIComponent(selectedProject.name)}`;
+        window.location.href = `/?sheetId=${encodeURIComponent(selectedProject.id)}`;
     }
   };
 
@@ -680,7 +722,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     if (updatedRow) {
         setIsAutoSaving(true);
         startSaving(async () => {
-            const result = await saveSingleRow(currentProject.id, updatedRow!);
+            const result = await saveSingleRow(currentSheetId, updatedRow!);
             if (!result.success) {
                 toast({
                     variant: "destructive",
@@ -703,7 +745,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const handleManualSave = () => {
     startSaving(async () => {
-        const result = await saveDataToSheet(currentProject.id, reorderHeaders(initialHeaders), allData, updatedRows);
+        const result = await saveDataToSheet(currentSheetId, reorderHeaders(initialHeaders), allData, updatedRows);
         if (result.success) {
             setUpdatedRows([]); // Clear updated rows after successful save
             toast({
@@ -893,13 +935,13 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             </Alert>
              <div className="mt-4">
               <Label className="text-xs font-medium text-primary">SELECIONAR PROJETO</Label>
-               <Select onValueChange={handleProjectChange} defaultValue={currentProject?.name}>
+               <Select onValueChange={handleProjectChange} value={currentProject?.id}>
                 <SelectTrigger className="w-full mt-1 h-9 rounded-md">
                     <SelectValue placeholder="Selecione um projeto" />
                 </SelectTrigger>
                 <SelectContent>
                     {availableProjects.map((proj) => (
-                    <SelectItem key={proj.id} value={proj.name}>
+                    <SelectItem key={proj.id} value={proj.id}>
                         {proj.name}
                     </SelectItem>
                     ))}
@@ -1222,21 +1264,76 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
-            <Label className="text-xs font-medium text-primary">SELECIONAR PROJETO</Label>
-            <Select onValueChange={handleProjectChange} defaultValue={currentProject.name}>
-            <SelectTrigger className="w-full md:w-1/3 lg:w-1/4 mt-1 h-9 rounded-md">
-                <SelectValue placeholder="Selecione um projeto" />
-            </SelectTrigger>
-            <SelectContent>
-                {availableProjects.map((proj) => (
-                <SelectItem key={proj.id} value={proj.name}>
-                    {proj.name}
-                </SelectItem>
-                ))}
-            </SelectContent>
-            </Select>
+        <div className="flex flex-wrap items-end gap-4 mb-4">
+            <div className="flex-1 min-w-[250px]">
+                <Label className="text-xs font-medium text-primary">SELECIONAR PROJETO</Label>
+                <Select onValueChange={handleProjectChange} value={currentSheetId}>
+                <SelectTrigger className="w-full mt-1 h-9 rounded-md">
+                    <SelectValue placeholder="Selecione um projeto" />
+                </SelectTrigger>
+                <SelectContent>
+                    {availableProjects.map((proj) => (
+                    <SelectItem key={proj.id} value={proj.id}>
+                        {proj.name}
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+            </div>
+            <Dialog open={isAddProjectDialogOpen} onOpenChange={setAddProjectDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" className="border-primary/50 uppercase h-9">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Adicionar Projeto
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Adicionar Novo Projeto</DialogTitle>
+                        <DialogDescription>
+                            Insira o nome do projeto e o ID da Planilha Google Sheets para carregá-lo.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(handleAddProject)} className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Nome do Projeto</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Ex: Manutenção Preventiva 2025" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="id"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>ID da Planilha Google</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Cole o ID da sua planilha aqui" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button type="button" variant="secondary">Cancelar</Button>
+                                </DialogClose>
+                                <Button type="submit">Salvar e Carregar Projeto</Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
         </div>
+
         <div className="md:hidden mb-4">
               <Sheet open={isMobileFilterOpen} onOpenChange={setMobileFilterOpen}>
                 <SheetTrigger asChild>
