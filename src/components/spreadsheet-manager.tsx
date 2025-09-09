@@ -225,19 +225,19 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   // All project management state is now handled on the client
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
   const [isAddProjectDialogOpen, setAddProjectDialogOpen] = useState(false);
-  const [isLoadingProject, setIsLoadingProject] = useState(true); // Start with loading true
+  const [isLoadingProject, setIsLoadingProject] = useState(true);
   
   const [projectToLoad, setProjectToLoad] = useState<Project | null>(null);
   
-  // Effect to handle loading state based on navigation
   useEffect(() => {
+    // Only turn off loading when the component has mounted and the data passed
+    // from the server matches the project ID in the URL.
+    // This prevents the UI from being usable before the new project's data has been rendered.
     const sheetIdFromUrl = searchParams.get('sheetId');
-    if (sheetIdFromUrl && sheetIdFromUrl !== currentSheetId) {
-        setIsLoadingProject(true);
-    } else {
+    if (isLoadingProject && sheetIdFromUrl === currentSheetId) {
         setIsLoadingProject(false);
     }
-  }, [searchParams, currentSheetId]);
+  }, [currentSheetId, searchParams, isLoadingProject]);
 
 
   const currentProject = useMemo(() => {
@@ -274,8 +274,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     } catch (error) {
       console.error("Failed to load projects from localStorage", error);
       setAvailableProjects(defaultProjects);
-    } finally {
-        setIsLoadingProject(false); // Stop loading after projects are loaded
     }
   }, []);
 
@@ -304,6 +302,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const confirmProjectChange = () => {
     if (projectToLoad) {
+      setIsLoadingProject(true); // Activate loading overlay
       router.push(`/?sheetId=${encodeURIComponent(projectToLoad.id)}`);
       setProjectToLoad(null);
     }
