@@ -852,26 +852,16 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     
     // Define the standard headers for the template
     const templateHeaders = [
-      "ORDEM",
-      "NOME DA TAREFA",
-      "INÍCIO DA LINHA DE BASE",
-      "TÉRMINO DA LINHA DE BASE",
-      "DURAÇÃO DA LINHA DE BASE",
-      "TRABALHO",
-      "TIPO",
-      "CAMINHO CRÍTICO(SIM/NÃO)",
-      "RESUMO(SIM/NÃO)",
-      "CÓDIGO DA ATIVIDADE",
-      "ÁREA",
-      "DISCIPLINA",
-      "SISTEMA",
-      "SUBSISTEMA",
-      "EQUIPAMENTO",
-      "TAG",
-      "LOCALIZAÇÃO",
-      "RESPONSÁVEL",
-      "ATUALIZADOR 1(EMAIL)",
-      "AVANÇO"
+      "ID", "AVANÇO", "STATUS", "ORDEM", "ID Exclusiva", "CENTRO DE TRABALHO", 
+      "LOCAL DA INSTALAÇÃO(TAG)", "DESCRIÇÃO LOCAL DA INSTALAÇÃO", "NOME DA TAREFA", 
+      "DURAÇÃO", "INÍCIO", "TÉRMINO", "RESPONSÁVEL", "PREDECESSORAS", "SUCESSORAS", 
+      "CALENDÁRIO DA TAREFA", "NOME DOS RECURSOS", "MODO", "RESUMO(SIM/NÃO)", "TIPO", 
+      "TIPO DE RESTRIÇÃO", "INÍCIO DA LINHA DE BASE", "TÉRMINO DA LINHA DE BASE", 
+      "TRABALHO", "QUANTIDADE DE RECURSOS", "DISCIPLINA", "ÁREA", "SUBAREA", 
+      "ATUALIZADOR 1(EMAIL)", "ATUALIZADOR 2 (EMAIL)", "ATUALIZADOR 3 (EMAIL)", 
+      "ATUALIZADOR 4(EMAIL)", "ATUALIZADOR 5 (EMAIL)", "CURVA ESCOPO GERAL", 
+      "CURVA ANDAIME", "CURVA ESPECIAL", "CURVA PROJETO", "CAMINHO CRÍTICO(SIM/NÃO)", 
+      "TIPO DE PARADA (PP,PE,PG)"
     ];
     
     // Define one row of example data
@@ -880,22 +870,18 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       "NOME DA TAREFA": "Inspecionar Motor Principal",
       "INÍCIO DA LINHA DE BASE": "01/08/2024",
       "TÉRMINO DA LINHA DE BASE": "02/08/2024",
-      "DURAÇÃO DA LINHA DE BASE": "2d",
+      "DURAÇÃO": "2d",
       "TRABALHO": "16h",
       "TIPO": "Atividade",
       "CAMINHO CRÍTICO(SIM/NÃO)": "Sim",
       "RESUMO(SIM/NÃO)": "Não",
-      "CÓDIGO DA ATIVIDADE": "INSP-MEC-001",
       "ÁREA": "MECÂNICA",
       "DISCIPLINA": "Mecânica",
-      "SISTEMA": "Propulsão",
-      "SUBSISTEMA": "Motor Principal",
-      "EQUIPAMENTO": "Motor Diesel 1A",
-      "TAG": "MOT-01A",
-      "LOCALIZAÇÃO": "Sala de Máquinas",
+      "LOCAL DA INSTALAÇÃO(TAG)": "MOT-01A",
       "RESPONSÁVEL": "João Silva",
       "ATUALIZADOR 1(EMAIL)": "joao.silva@email.com",
-      "AVANÇO": "0%"
+      "AVANÇO": "0%",
+      "STATUS": "NI",
     }];
 
     const worksheet = XLSX.utils.json_to_sheet(exampleData, { header: templateHeaders });
