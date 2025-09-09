@@ -36,9 +36,9 @@ export const AreaProgressChart: React.FC<AreaProgressChartProps> = ({ data }) =>
     return (
       <Card>
         <CardHeader>
-           <div className="flex justify-between items-center">
+           <div className="flex items-center">
             <CardTitle>Progresso por Área</CardTitle>
-            <span className="text-sm text-muted-foreground">Hoje = {today}</span>
+            <span className="text-sm text-muted-foreground ml-4">Hoje = {today}</span>
           </div>
           <CardDescription>
             Não há dados de progresso para exibir.
@@ -54,9 +54,9 @@ export const AreaProgressChart: React.FC<AreaProgressChartProps> = ({ data }) =>
   return (
     <Card className="bg-card">
       <CardHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex items-center">
           <CardTitle>Progresso por Área</CardTitle>
-          <span className="text-sm text-muted-foreground">Hoje = {today}</span>
+          <span className="text-sm text-muted-foreground ml-4">Hoje = {today}</span>
         </div>
         <CardDescription>
           Avanço médio de tarefas por área de atuação.
