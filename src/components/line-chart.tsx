@@ -70,36 +70,36 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
 
   return (
     <Card className="bg-card relative">
-      <CardHeader>
-        <CardTitle>Curva S - {area}</CardTitle>
-        <CardDescription>
-          PREVISTO X REALIZADO
-        </CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between">
+        <div>
+            <CardTitle>Curva S - {area}</CardTitle>
+            <CardDescription>
+            PREVISTO X REALIZADO
+            </CardDescription>
+        </div>
+         <Card className="bg-background/80 backdrop-blur-sm -mt-2">
+            <CardHeader className="p-3">
+                <CardTitle className="text-sm">Diagnóstico Rápido</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 text-xs">
+                {gap > 0 ? (
+                    <p>A área está <span className="font-bold text-green-500">{gap.toFixed(0)}%</span> à frente do previsto.</p>
+                ) : (
+                    <p>A área está <span className="font-bold text-red-500">{Math.abs(gap).toFixed(0)}%</span> atrás do previsto.</p>
+                )}
+                {dailyProgressNeeded > 0 && diasRestantes > 0 && (
+                    <p className="mt-1">
+                        Precisa de <span className="font-bold">{dailyProgressNeeded.toFixed(1)}%</span>/dia por <span className="font-bold">{diasRestantes}</span> dias para atingir a meta.
+                    </p>
+                )}
+                    {currentRealizado === 100 && (
+                    <p className="mt-1 font-bold text-primary">Área concluída!</p>
+                )}
+            </CardContent>
+        </Card>
       </CardHeader>
       <CardContent>
         <div className="h-80 w-full relative">
-            <div className="absolute top-0 right-0 z-10 p-2">
-                <Card className="bg-background/80 backdrop-blur-sm">
-                    <CardHeader className="p-3">
-                        <CardTitle className="text-sm">Diagnóstico Rápido</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0 text-xs">
-                        {gap > 0 ? (
-                           <p>A área está <span className="font-bold text-green-500">{gap.toFixed(0)}%</span> à frente do previsto.</p>
-                        ) : (
-                           <p>A área está <span className="font-bold text-red-500">{Math.abs(gap).toFixed(0)}%</span> atrás do previsto.</p>
-                        )}
-                        {dailyProgressNeeded > 0 && diasRestantes > 0 && (
-                            <p className="mt-1">
-                                Precisa de <span className="font-bold">{dailyProgressNeeded.toFixed(1)}%</span>/dia por <span className="font-bold">{diasRestantes}</span> dias para atingir a meta.
-                            </p>
-                        )}
-                         {currentRealizado === 100 && (
-                            <p className="mt-1 font-bold text-primary">Área concluída!</p>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
