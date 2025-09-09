@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useEffect, useTransition, type FC } from 'react';
-import * as XLSX from 'xlsx';
 import {
   Table,
   TableBody,
@@ -364,7 +363,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     });
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    const XLSX = await import('xlsx');
     const dataToExport = filteredData.map(row => {
         const newRow: Record<string, any> = {};
         headers.forEach(header => {
@@ -569,10 +569,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     <Download className="mr-2 h-4 w-4" />
                     EXPORTAR
                 </Button>
-                <Button variant="outline" size="sm" onClick={clearFilters} className="border-primary/50 uppercase">
-                    <Eraser className="mr-2 h-4 w-4" />
-                    Limpar Filtros
-                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="border-primary/50 uppercase"><Columns className="mr-2 h-4 w-4" /> Colunas</Button>
@@ -630,7 +626,13 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     <ScrollArea className="h-[calc(100%-80px)]">
                         <div className="space-y-4 p-4">
                             <h3 className="font-semibold">Filtros</h3>
-                            <FilterControls inSheet={true} />
+                            <div className="space-y-2">
+                                <Button variant="outline" size="sm" onClick={clearFilters} className="w-full border-primary/50 uppercase">
+                                    <Eraser className="mr-2 h-4 w-4" />
+                                    Limpar Filtros
+                                </Button>
+                                <FilterControls inSheet={true} />
+                            </div>
                             <h3 className="font-semibold pt-4">Colunas Visíveis</h3>
                             <div className="space-y-2">
                                 {headers.map((header) => (
@@ -652,6 +654,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
               </Sheet>
         </div>
         <div className="hidden md:flex flex-wrap items-end gap-4 mb-4 relative">
+            <Button variant="outline" size="sm" onClick={clearFilters} className="border-primary/50 uppercase">
+                <Eraser className="mr-2 h-4 w-4" />
+                Limpar Filtros
+            </Button>
             <FilterControls />
         </div>
         {currentView === 'table' ? (
