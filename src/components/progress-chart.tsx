@@ -34,7 +34,9 @@ interface ProgressChartProps {
 export const ProgressChart: React.FC<ProgressChartProps> = ({ data }) => {
   const areaName = data.length > 0 ? data[0].area : 'N/A';
 
-  if (!data || data.length === 0 || (data[0]['CONCLUÍDO'] === 0 && data[0]['EM ANDAMENTO'] === 0 && data[0]['NÃO INICIADO'] === 0)) {
+  const chartItem = data[0];
+
+  if (!data || data.length === 0 || (chartItem['CONCLUÍDO'] === 0 && chartItem['EM ANDAMENTO'] === 0 && chartItem['NÃO INICIADO'] === 0)) {
     return (
       <Card>
         <CardHeader>
@@ -49,6 +51,14 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ data }) => {
       </Card>
     )
   }
+  
+  const total = chartItem['CONCLUÍDO'] + chartItem['EM ANDAMENTO'] + chartItem['NÃO INICIADO'];
+  const shouldShowLabel = (value: number) => {
+    if (total === 0) return false;
+    // Only show label if it represents at least 5% of the total, to avoid clutter
+    return (value / total) > 0.05;
+  }
+
 
   return (
     <Card className="bg-card">
@@ -79,13 +89,13 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ data }) => {
               />
               <Legend />
               <Bar dataKey="NÃO INICIADO" stackId="a" fill="#d1d5db" name="Não Iniciado">
-                <LabelList dataKey="NÃO INICIADO" position="center" formatter={(value: number) => value > 0 ? value : ''} style={{ fontWeight: 'bold', fill: 'black' }} />
+                <LabelList dataKey="NÃO INICIADO" position="center" formatter={(value: number) => shouldShowLabel(value) ? value : ''} style={{ fontWeight: 'bold', fill: 'black' }} />
               </Bar>
               <Bar dataKey="EM ANDAMENTO" stackId="a" fill="#3b82f6" name="Em Andamento">
-                 <LabelList dataKey="EM ANDAMENTO" position="center" formatter={(value: number) => value > 0 ? value : ''} style={{ fontWeight: 'bold', fill: 'black' }} />
+                 <LabelList dataKey="EM ANDAMENTO" position="center" formatter={(value: number) => shouldShowLabel(value) ? value : ''} style={{ fontWeight: 'bold', fill: 'black' }} />
               </Bar>
               <Bar dataKey="CONCLUÍDO" stackId="a" fill="#22c55e" name="Concluído">
-                 <LabelList dataKey="CONCLUÍDO" position="center" formatter={(value: number) => value > 0 ? value : ''} style={{ fontWeight: 'bold', fill: 'black' }} />
+                 <LabelList dataKey="CONCLUÍDO" position="center" formatter={(value: number) => shouldShowLabel(value) ? value : ''} style={{ fontWeight: 'bold', fill: 'black' }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
