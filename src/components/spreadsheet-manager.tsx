@@ -117,20 +117,12 @@ const reorderHeaders = (headers: string[]): string[] => {
     if (!newHeaders.includes('ID')) newHeaders.push('ID');
     
     // Remove from current positions to re-insert later
-    const columnsToMove = ['ID', 'AVANÇO', 'STATUS', 'PREVISTO', 'DESVIO'];
+    const columnsToMove = ['ID', 'AVANÇO', 'STATUS', 'ORDEM', 'PREVISTO', 'DESVIO'];
     newHeaders = newHeaders.filter(h => !columnsToMove.includes(h));
 
-    // Add ID and AVANÇO to the beginning
-    newHeaders.unshift('ID', 'AVANÇO');
+    // Add columns in the desired order
+    newHeaders.unshift('ID', 'AVANÇO', 'STATUS', 'ORDEM');
     
-    // Find insertion point for STATUS
-    const avancoIndex = newHeaders.indexOf('AVANÇO');
-    if (avancoIndex !== -1) {
-        newHeaders.splice(avancoIndex + 1, 0, 'STATUS');
-    } else {
-        newHeaders.push('STATUS');
-    }
-
     const terminoPrevistoIndex = newHeaders.indexOf('TÉRMINO PREVISTO');
     if(terminoPrevistoIndex !== -1) {
         newHeaders.splice(terminoPrevistoIndex + 1, 0, 'PREVISTO', 'DESVIO');
