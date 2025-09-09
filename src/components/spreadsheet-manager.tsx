@@ -179,7 +179,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const { toast } = useToast();
   const [currentView, setCurrentView] = useState<'table' | 'bar-chart' | 'line-chart'>('table');
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
-  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setLastUpdated(new Date().toLocaleString('pt-BR'));
@@ -497,10 +496,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   }, [headers, toast]);
 
   const handleAdvanceChange = (id: number, increment: boolean) => {
-    if (saveTimeout) {
-      clearTimeout(saveTimeout);
-    }
-
     const updatedData = allData.map(row => {
       if (row.id === id) {
         const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
@@ -511,12 +506,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     });
 
     setAllData(updatedData);
-
-    const newTimeout = setTimeout(() => {
-      triggerSave(updatedData);
-    }, 2000); // Salva 2 segundos após a última alteração
-
-    setSaveTimeout(newTimeout);
+    triggerSave(updatedData);
   };
 
   const handleOrderClick = (order: string) => {
@@ -779,7 +769,16 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                 cellContent = <span className={cn('font-bold', colorClass)}>{row.DESVIO}</span>;
                             } else if (header === 'STATUS') {
                                 const status = String(row.STATUS);
-                                const colorClass = status === 'CON' ? 'text-green-500' : status === 'AND' ? 'text-blue-500' : 'text-gray-500';
+                                let colorClass = '';
+                                if (status === 'CON') {
+                                  colorClass = 'text-green-500';
+                                } else if (status === 'AND') {
+                                  colorClass = 'text-blue-500';
+                                } else if (status === 'NI') {
+                                  colorClass = 'text-red-500';
+                                } else {
+                                  colorClass = 'text-gray-500';
+                                }
                                 cellContent = <span className={cn('font-bold', colorClass)}>{status}</span>;
                             } else {
                                 cellContent = String(row[header] || '-');
@@ -870,23 +869,32 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const ViewButtons = () => (
     <>
-        {currentView !== 'table' && (
-            <Button variant="outline" size="sm" onClick={() => setCurrentView('table')} className="border-primary/50 uppercase">
-                <TableIcon className="mr-2 h-4 w-4" /> TABELA
-            </Button>
-        )}
-        {currentView !== 'bar-chart' && (
-            <Button variant="outline" size="sm" onClick={() => setCurrentView('bar-chart')} className="border-primary/50 uppercase">
-                <BarChart className="mr-2 h-4 w-4" /> GRÁFICO
-            </Button>
-        )}
-        {currentView !== 'line-chart' && (
-            <Button variant="outline" size="sm" onClick={() => setCurrentView('line-chart')} className="border-primary/50 uppercase">
-                <LineChartIcon className="mr-2 h-4 w-4" /> CURVA S
-            </Button>
-        )}
+      <Button 
+        variant={currentView === 'table' ? 'default' : 'outline'} 
+        size="sm" 
+        onClick={() => setCurrentView('table')} 
+        className="border-primary/50 uppercase"
+      >
+          <TableIcon className="mr-2 h-4 w-4" /> TABELA
+      </Button>
+      <Button 
+        variant={currentView === 'bar-chart' ? 'default' : 'outline'}
+        size="sm" 
+        onClick={() => setCurrentView('bar-chart')} 
+        className="border-primary/50 uppercase"
+      >
+          <BarChart className="mr-2 h-4 w-4" /> GRÁFICO
+      </Button>
+      <Button 
+        variant={currentView === 'line-chart' ? 'default' : 'outline'}
+        size="sm" 
+        onClick={() => setCurrentView('line-chart')} 
+        className="border-primary/50 uppercase"
+      >
+          <LineChartIcon className="mr-2 h-4 w-4" /> CURVA S
+      </Button>
     </>
-    );
+  );
 
 
   return (
