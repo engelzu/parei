@@ -31,6 +31,53 @@ interface ProgressChartProps {
   data: ChartData[]
 }
 
+const CustomizedLabel = (props: any) => {
+    const { x, y, width, height, value, index, data, dataKey } = props;
+    const chartItem = data[index];
+    const total = chartItem['CONCLUÍDO'] + chartItem['EM ANDAMENTO'] + chartItem['NÃO INICIADO'];
+    const radius = 10;
+    
+    const percentage = total > 0 ? value / total : 0;
+    
+    // Threshold to decide when to render the label outside
+    const isTooSmall = percentage < 0.05;
+
+    if (value === 0) {
+      return null;
+    }
+
+    if (isTooSmall) {
+      // Render label outside with a line
+      const midAngle = -45; // Angle for the line
+      const ex = x + width / 2;
+      const ey = y + height / 2;
+      const sx = ex + (width / 2 + 5) * Math.cos(midAngle);
+      const sy = ey + (height / 2 + 5) * Math.sin(midAngle);
+      const mx = ex + (width / 2 + 15) * Math.cos(midAngle);
+      const my = ey + (height / 2 + 15) * Math.sin(midAngle);
+      const tx = mx + 5 * Math.cos(midAngle);
+      const ty = my;
+      
+      return (
+        <g>
+          <path d={`M${sx},${sy}L${mx},${my}L${tx},${ty}`} stroke="hsl(var(--foreground))" fill="none" strokeWidth={1}/>
+          <circle cx={sx} cy={sy} r={2} fill="hsl(var(--foreground))" stroke="none" />
+          <text x={tx + (midAngle > 90 * Math.PI / 180 ? -5 : 5)} y={ty} textAnchor="start" dominantBaseline="middle" fill="hsl(var(--foreground))" style={{ fontWeight: 'bold' }}>
+            {`${value}`}
+          </text>
+        </g>
+      );
+    }
+  
+    // Render label inside the bar
+    return (
+      <text x={x + width / 2} y={y + height / 2} fill="#ffffff" textAnchor="middle" dominantBaseline="middle" style={{ fontWeight: 'bold' }}>
+        {value}
+      </text>
+    );
+};
+
+
 export const ProgressChart: React.FC<ProgressChartProps> = ({ data }) => {
   const areaName = data.length > 0 ? data[0].area : 'N/A';
 
@@ -52,14 +99,6 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ data }) => {
     )
   }
   
-  const total = chartItem['CONCLUÍDO'] + chartItem['EM ANDAMENTO'] + chartItem['NÃO INICIADO'];
-  const shouldShowLabel = (value: number) => {
-    if (total === 0) return false;
-    // Only show label if it represents at least 5% of the total, to avoid clutter
-    return (value / total) > 0.05;
-  }
-
-
   return (
     <Card className="bg-card">
       <CardHeader>
@@ -89,13 +128,13 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ data }) => {
               />
               <Legend />
               <Bar dataKey="NÃO INICIADO" stackId="a" fill="#d1d5db" name="Não Iniciado">
-                <LabelList dataKey="NÃO INICIADO" position="center" formatter={(value: number) => shouldShowLabel(value) ? value : ''} style={{ fontWeight: 'bold', fill: 'black' }} />
+                <LabelList content={<CustomizedLabel dataKey="NÃO INICIADO" data={data}/>} />
               </Bar>
               <Bar dataKey="EM ANDAMENTO" stackId="a" fill="#3b82f6" name="Em Andamento">
-                 <LabelList dataKey="EM ANDAMENTO" position="center" formatter={(value: number) => shouldShowLabel(value) ? value : ''} style={{ fontWeight: 'bold', fill: 'black' }} />
+                 <LabelList content={<CustomizedLabel dataKey="EM ANDAMENTO" data={data}/>} />
               </Bar>
               <Bar dataKey="CONCLUÍDO" stackId="a" fill="#22c55e" name="Concluído">
-                 <LabelList dataKey="CONCLUÍDO" position="center" formatter={(value: number) => shouldShowLabel(value) ? value : ''} style={{ fontWeight: 'bold', fill: 'black' }} />
+                 <LabelList content={<CustomizedLabel dataKey="CONCLUÍDO" data={data}/>} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
