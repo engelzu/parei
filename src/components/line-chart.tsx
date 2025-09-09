@@ -1,8 +1,9 @@
+
 "use client"
 
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -19,15 +20,16 @@ import {
 } from '@/components/ui/card';
 
 export interface LineChartData {
-  name: string
-  previsto: number
-  realizado: number
+  name: string;
+  previsto: number;
+  realizado: number;
 }
 
 interface PlannedRealizedChartProps {
-  data: LineChartData[]
-  area: string
+  data: { name: string; previsto: number; realizado: number }[];
+  area: string;
 }
+
 
 export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data, area }) => {
   if (!data || data.length === 0) {
@@ -45,38 +47,50 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
       </Card>
     )
   }
+  
+  // The data for the line chart needs points to connect. 
+  // We'll create a synthetic timeline.
+  const chartData = [
+      { name: 'Início', previsto: 0, realizado: 0 },
+      { name: area, previsto: data[0].previsto, realizado: data[0].realizado },
+      { name: 'Fim', previsto: 100, realizado: data[0].realizado }, // Assuming 'realizado' is the current progress
+  ];
+
 
   return (
     <Card className="bg-card">
       <CardHeader>
         <CardTitle>Curva S - {area}</CardTitle>
         <CardDescription>
-          Média de avanço previsto e realizado para a área.
+          Comparativo de avanço previsto e realizado para a área.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={data}
-              layout="vertical"
-               margin={{
+            <LineChart
+              data={chartData}
+              margin={{
                 top: 5,
-                right: 50,
+                right: 30,
                 left: 20,
                 bottom: 5,
               }}
             >
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" dataKey="value" domain={[0, 100]} unit="%" />
-              <YAxis type="category" dataKey="name" hide={true} />
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis domain={[0, 100]} unit="%" />
               <Tooltip
                 formatter={(value: number) => `${value}%`}
+                labelFormatter={(label) => {
+                    if (label === 'Início' || label === 'Fim') return label;
+                    return `Ponto Atual (${label})`
+                }}
               />
               <Legend />
-              <Bar dataKey="previsto" name="Previsto" fill="hsl(var(--muted-foreground))" />
-              <Bar dataKey="realizado" name="Realizado" fill="hsl(var(--primary))" />
-            </BarChart>
+              <Line type="monotone" dataKey="previsto" name="Previsto" stroke="hsl(var(--muted-foreground))" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="realizado" name="Realizado" stroke="hsl(var(--primary))" strokeWidth={2} />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </CardContent>
