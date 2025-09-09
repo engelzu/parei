@@ -63,7 +63,7 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
       <CardHeader>
         <CardTitle>Curva S - {area}</CardTitle>
         <CardDescription>
-          Comparativo de avanço previsto e realizado para a área.
+          PREVISTO X REALIZADO
         </CardDescription>
       </CardHeader>
       <CardContent>
