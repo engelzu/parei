@@ -32,6 +32,15 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -216,6 +225,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
   const [isAddProjectDialogOpen, setAddProjectDialogOpen] = useState(false);
   
+  const [projectToLoad, setProjectToLoad] = useState<Project | null>(null);
+
   const currentProject = useMemo(() => {
     return availableProjects.find(p => p.id === currentSheetId) || defaultProjects[0];
   }, [availableProjects, currentSheetId]);
@@ -258,15 +269,24 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     form.reset();
     setAddProjectDialogOpen(false);
     // Navigate to the new project page to load its data
-    router.push(`/?sheetId=${newProject.id}`);
+    handleProjectChange(newProject.id);
   };
 
   const handleProjectChange = (projectId: string) => {
+    if (projectId === currentSheetId) return;
     const selectedProject = availableProjects.find(p => p.id === projectId);
     if (selectedProject) {
-        router.push(`/?sheetId=${encodeURIComponent(selectedProject.id)}`);
+        setProjectToLoad(selectedProject);
     }
   };
+
+  const confirmProjectChange = () => {
+    if (projectToLoad) {
+      router.push(`/?sheetId=${encodeURIComponent(projectToLoad.id)}`);
+      setProjectToLoad(null);
+    }
+  };
+
 
   useEffect(() => {
     setLastUpdated(new Date().toLocaleString('pt-BR'));
@@ -489,28 +509,45 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
             const avancoNum = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
             const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
+            
+            let isDelayed = false;
+            if (avancoNum < 100 && startDate && startDate.getTime() < today.getTime()) {
+                const previsto = parseFloat(String(row['PREVISTO'] || '0').replace('%',''));
+                if(avancoNum < previsto) {
+                    isDelayed = true;
+                }
+            }
+
 
             if (avancoNum === 100) {
                 dataByArea[area]['CONCLUÍDO']++;
             } else if (avancoNum > 0) {
                 dataByArea[area]['EM ANDAMENTO']++;
+                if (isDelayed) dataByArea[area]['ATRASADA']++;
+
             } else { // avancoNum is 0 or NaN
                 dataByArea[area]['NÃO INICIADO']++;
-                if (startDate && startDate.getTime() < today.getTime()) {
-                    dataByArea[area]['ATRASADA']++;
-                }
+                if (isDelayed) dataByArea[area]['ATRASADA']++;
             }
         }
     });
 
     return Object.keys(dataByArea)
-      .map(area => ({
-        area,
-        'CONCLUÍDO': dataByArea[area]['CONCLUÍDO'],
-        'EM ANDAMENTO': dataByArea[area]['EM ANDAMENTO'],
-        'NÃO INICIADO': dataByArea[area]['NÃO INICIADO'] - dataByArea[area]['ATRASADA'], // Subtrai as atrasadas das não iniciadas
-        'ATRASADA': dataByArea[area]['ATRASADA'],
-      }))
+      .map(area => {
+        const totalNaoIniciado = dataByArea[area]['NÃO INICIADO'];
+        const totalEmAndamento = dataByArea[area]['EM ANDAMENTO'];
+        const atrasadas = dataByArea[area]['ATRASADA'];
+
+        // Atrasadas já estão contidas em 'Não Iniciado' ou 'Em Andamento',
+        // então o total para o gráfico empilhado já está correto.
+        return {
+          area,
+          'CONCLUÍDO': dataByArea[area]['CONCLUÍDO'],
+          'EM ANDAMENTO': totalEmAndamento,
+          'NÃO INICIADO': totalNaoIniciado,
+          'ATRASADA': atrasadas,
+        }
+      })
       .sort((a, b) => a.area.localeCompare(b.area));
   }, [filteredData]);
 
@@ -607,77 +644,83 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
           return { dailyLogChartData: [], dailyLogChartKeys: [] };
       }
 
-      const taskToAreaMap = initialData.reduce((acc, row) => {
-          if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não' && row.id) {
-              acc[String(row.id)] = String(row['ÁREA'] || 'N/A');
-          }
-          return acc;
+      const taskToAreaMap: Record<string, string> = initialData.reduce((acc, row) => {
+        if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não' && row.id) {
+          acc[String(row.id)] = String(row['ÁREA'] || 'N/A');
+        }
+        return acc;
       }, {} as Record<string, string>);
+      
+      const allAreas = Array.from(new Set(Object.values(taskToAreaMap))).sort();
 
       const logsByDate: Record<string, { taskId: string; progress: number }[]> = {};
       initialLogData.forEach(log => {
-          const taskId = String(log.ID_TAREFA);
-          if (taskToAreaMap[taskId]) {
-              try {
-                  const timestamp = new Date(log.TIMESTAMP);
-                  if (isNaN(timestamp.getTime())) return;
-                  
-                  const dateKey = new Date(timestamp.getUTCFullYear(), timestamp.getUTCMonth(), timestamp.getUTCDate()).toISOString().split('T')[0];
+        const taskId = String(log.ID_TAREFA);
+        if (taskToAreaMap[taskId]) {
+          try {
+            const timestamp = new Date(log.TIMESTAMP);
+            if (isNaN(timestamp.getTime())) return;
+            
+            const dateKey = new Date(timestamp.getUTCFullYear(), timestamp.getUTCMonth(), timestamp.getUTCDate()).toISOString().split('T')[0];
 
-                  if (!logsByDate[dateKey]) {
-                      logsByDate[dateKey] = [];
-                  }
-                  logsByDate[dateKey].push({
-                      taskId,
-                      progress: parseFloat(String(log.AVANCO_PERCENTUAL)),
-                  });
-              } catch (e) { /* Ignore malformed logs */ }
-          }
+            if (!logsByDate[dateKey]) {
+              logsByDate[dateKey] = [];
+            }
+            logsByDate[dateKey].push({
+              taskId,
+              progress: parseFloat(String(log.AVANCO_PERCENTUAL)),
+            });
+          } catch (e) { /* Ignore malformed logs */ }
+        }
       });
       
       const sortedDates = Object.keys(logsByDate).sort();
 
       if (sortedDates.length === 0) {
-          return { dailyLogChartData: [], dailyLogChartKeys: [] };
+        return { dailyLogChartData: [], dailyLogChartKeys: [] };
       }
       
-      const allAreas = Array.from(new Set(Object.values(taskToAreaMap))).sort();
       const dailyStates: DailyProgressChartData[] = [];
+      
+      // Initialize currentTaskProgress with 0 for all tasks
       const currentTaskProgress: Record<string, number> = {};
-
       Object.keys(taskToAreaMap).forEach(taskId => {
-          currentTaskProgress[taskId] = 0;
+        currentTaskProgress[taskId] = 0;
       });
-
+      
       for (const dateKey of sortedDates) {
-          const todaysLogs = logsByDate[dateKey] || [];
-          
-          todaysLogs.forEach(log => {
-              if (typeof log.progress === 'number' && !isNaN(log.progress)) {
-                  currentTaskProgress[log.taskId] = log.progress;
-              }
-          });
+        const todaysLogs = logsByDate[dateKey] || [];
+        
+        // Update progress for tasks that have logs for the current day
+        todaysLogs.forEach(log => {
+          if (typeof log.progress === 'number' && !isNaN(log.progress)) {
+            currentTaskProgress[log.taskId] = log.progress;
+          }
+        });
 
-          const progressByArea: Record<string, { total: number; count: number }> = {};
-          allAreas.forEach(area => {
-              progressByArea[area] = { total: 0, count: 0 };
-          });
+        // Calculate a "snapshot" of all tasks' progress on this day
+        const progressByArea: Record<string, { total: number; count: number }> = {};
+        allAreas.forEach(area => {
+          progressByArea[area] = { total: 0, count: 0 };
+        });
 
-          Object.keys(currentTaskProgress).forEach(taskId => {
-              const area = taskToAreaMap[taskId];
-              if (area) { 
-                  progressByArea[area].total += currentTaskProgress[taskId];
-                  progressByArea[area].count++;
-              }
-          });
-          
-          const [year, month, day] = dateKey.split('-');
-          const chartEntry: DailyProgressChartData = { date: `${day}/${month}/${year.slice(2)}` };
-          allAreas.forEach(area => {
-              const areaData = progressByArea[area];
-              chartEntry[area] = areaData.count > 0 ? Math.round(areaData.total / areaData.count) : 0;
-          });
-          dailyStates.push(chartEntry);
+        Object.keys(currentTaskProgress).forEach(taskId => {
+          const area = taskToAreaMap[taskId];
+          if (area) { 
+            progressByArea[area].total += currentTaskProgress[taskId];
+            progressByArea[area].count++;
+          }
+        });
+        
+        const [year, month, day] = dateKey.split('-');
+        const chartEntry: DailyProgressChartData = { date: `${day}/${month}/${year.slice(2)}` };
+        
+        allAreas.forEach(area => {
+          const areaData = progressByArea[area];
+          chartEntry[area] = areaData.count > 0 ? Math.round(areaData.total / areaData.count) : 0;
+        });
+
+        dailyStates.push(chartEntry);
       }
       
       return { dailyLogChartData: dailyStates, dailyLogChartKeys: allAreas };
@@ -943,7 +986,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             </Alert>
              <div className="mt-4">
               <Label className="text-xs font-medium text-primary">SELECIONAR PROJETO</Label>
-               <Select onValueChange={handleProjectChange} value={currentProject?.id}>
+               <Select onValueChange={handleProjectChange} value={currentSheetId}>
                 <SelectTrigger className="w-full mt-1 h-9 rounded-md">
                     <SelectValue placeholder="Selecione um projeto" />
                 </SelectTrigger>
@@ -1181,8 +1224,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       </Button>
       <Button 
         variant={currentView === 'area-progress-chart' ? 'default' : 'outline'}
-        size="sm" 
-        onClick={() => setCurrentView('area-progress-chart')} 
+        size="sm" onClick={() => setCurrentView('area-progress-chart')} 
         className="border-primary/50 uppercase"
       >
           <AreaChart className="mr-2 h-4 w-4" /> PROGRESSO
@@ -1387,6 +1429,20 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             <FilterControls />
         </div>
         {renderContent()}
+        
+        <AlertDialog open={!!projectToLoad} onOpenChange={(open) => !open && setProjectToLoad(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Seu projeto agora é:</AlertDialogTitle>
+                <AlertDialogDescription className="text-primary font-bold text-lg pt-2">
+                    {projectToLoad?.name}
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogAction onClick={confirmProjectChange}>Confirmar</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
 
         {selectedOrder && (
             <Dialog open={!!selectedOrder} onOpenChange={(isOpen) => !isOpen && setSelectedOrder(null)}>
@@ -1424,7 +1480,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                                         <ChevronDown className="h-3 w-3"/>
                                                     </Button>
                                                     <span className="w-8 text-center font-medium">{task['AVANÇO'] || '0%'}</span>
-                                                    <Button 
+                                                    <Button Pan>
                                                         size="icon"
                                                         variant="ghost" 
                                                         className="h-5 w-5" 
