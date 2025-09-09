@@ -23,6 +23,17 @@ import {
   CardDescription
 } from '@/components/ui/card';
 import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogTrigger,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogClose,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -226,6 +237,15 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       setIsLoadingProject(false);
     }
   }, [currentSheetId, searchParams]);
+
+  useEffect(() => {
+    setAllData(initialData);
+    setSearchTerm('');
+    setActiveFilters({ 'ÁREA': [], 'RESPONSÁVEL': [], 'ATUALIZADOR 1(EMAIL)': [] });
+    setResumoFilter('all');
+    setCaminhoCriticoFilter('all');
+    setCurrentPage(1);
+  }, [initialData]);
 
   const currentProject = useMemo(() => {
     return availableProjects.find(p => p.id === currentSheetId) || null;
