@@ -65,6 +65,7 @@ import {
   Eraser,
   X,
   LineChart as LineChartIcon,
+  TableIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProgressChart, type ChartData } from '@/components/progress-chart';
@@ -857,6 +858,26 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     }
   };
 
+  const ViewButtons = () => (
+    <>
+        {currentView !== 'table' && (
+            <Button variant="outline" size="sm" onClick={() => setCurrentView('table')} className="border-primary/50 uppercase">
+                <TableIcon className="mr-2 h-4 w-4" /> TABELA
+            </Button>
+        )}
+        {currentView !== 'bar-chart' && (
+            <Button variant="outline" size="sm" onClick={() => setCurrentView('bar-chart')} className="border-primary/50 uppercase">
+                <BarChart className="mr-2 h-4 w-4" /> GRÁFICO
+            </Button>
+        )}
+        {currentView !== 'line-chart' && (
+            <Button variant="outline" size="sm" onClick={() => setCurrentView('line-chart')} className="border-primary/50 uppercase">
+                <LineChartIcon className="mr-2 h-4 w-4" /> CURVA S
+            </Button>
+        )}
+    </>
+    );
+
 
   return (
     <Card className="border-0 shadow-none sm:border sm:shadow-sm bg-transparent">
@@ -883,12 +904,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     )}
                     SALVAR
                 </Button>
-                 <Button variant="outline" size="sm" onClick={() => setCurrentView(currentView === 'table' ? 'bar-chart' : 'table')} className="border-primary/50 uppercase">
-                    <BarChart className="mr-2 h-4 w-4" /> {currentView === 'bar-chart' ? 'TABELA' : 'GRÁFICO'}
-                </Button>
-                 <Button variant="outline" size="sm" onClick={() => setCurrentView(currentView === 'table' ? 'line-chart' : 'table')} className="border-primary/50 uppercase">
-                    <LineChartIcon className="mr-2 h-4 w-4" /> {currentView === 'line-chart' ? 'TABELA' : 'CURVA S'}
-                </Button>
+                 <ViewButtons />
                 <Button size="sm" variant="outline" onClick={handleExport} className="border-primary/50 uppercase">
                     <Download className="mr-2 h-4 w-4" />
                     EXPORTAR
@@ -1050,5 +1066,3 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     </Card>
   );
 };
-
-    
