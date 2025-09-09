@@ -2,8 +2,8 @@
 "use client"
 
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -23,30 +23,45 @@ import {
 // This will be populated with the data from the Log sheet
 export interface DailyProgressChartData {
   date: string;
-  'AVANÇO': number;
+  [key: string]: number | string; // Allows for dynamic area keys
 }
 
 interface DailyProgressChartProps {
-  data: DailyProgressChartData[]
+  data: DailyProgressChartData[];
+  dataKeys: string[]; // This will be the list of areas, e.g., ['MECÂNICA', 'ELÉTRICA']
 }
 
-export const DailyProgressChart: React.FC<DailyProgressChartProps> = ({ data }) => {
-  if (!data || data.length === 0) {
+// Simple hash function to get a color for each area
+const stringToColor = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let color = '#';
+  for (let i = 0; i < 3; i++) {
+    const value = (hash >> (i * 8)) & 0xFF;
+    color += ('00' + value.toString(16)).substr(-2);
+  }
+  return color;
+}
+
+export const DailyProgressChart: React.FC<DailyProgressChartProps> = ({ data, dataKeys }) => {
+  if (!data || data.length === 0 || !dataKeys || dataKeys.length === 0) {
     return (
       <Card>
         <CardHeader>
            <div className="flex items-center">
-            <CardTitle>Log de Avanço Diário</CardTitle>
+            <CardTitle>Log de Avanço Diário por Área</CardTitle>
           </div>
           <CardDescription>
-            Acompanhe a evolução do avanço total ao longo do tempo.
+            Acompanhe a evolução do avanço médio por área ao longo do tempo.
           </CardDescription>
         </CardHeader>
         <CardContent className="h-[70vh] flex items-center justify-center">
             <div className="text-center text-muted-foreground">
                 <p>Nenhum dado de log encontrado.</p>
                 <p className="text-sm mt-2">Assim que as alterações de avanço forem salvas, os dados aparecerão aqui.</p>
-                 <p className="text-sm mt-1">Certifique-se de que a aba "LogDiario" foi criada e o Google Apps Script foi atualizado.</p>
+                 <p className="text-sm mt-1">Certifique-se de que a aba "LogDiario" tem dados e o app foi atualizado.</p>
             </div>
         </CardContent>
       </Card>
@@ -57,16 +72,16 @@ export const DailyProgressChart: React.FC<DailyProgressChartProps> = ({ data }) 
     <Card className="bg-card">
       <CardHeader>
         <div className="flex items-center">
-          <CardTitle>Log de Avanço Diário</CardTitle>
+          <CardTitle>Log de Avanço Diário por Área</CardTitle>
         </div>
         <CardDescription>
-          Acompanhe a evolução do avanço total ao longo do tempo.
+          Acompanhe a evolução do avanço médio por área ao longo do tempo.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[70vh] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
+            <LineChart
               data={data}
               margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
             >
@@ -75,18 +90,28 @@ export const DailyProgressChart: React.FC<DailyProgressChartProps> = ({ data }) 
               <YAxis type="number" domain={[0, 100]} unit="%" />
               <Tooltip
                 cursor={{ fill: 'hsl(var(--accent) / 0.3)' }}
-                formatter={(value: number) => [`${value.toFixed(0)}%`, "Avanço Total"]}
+                formatter={(value: number, name: string) => [`${value.toFixed(0)}%`, name]}
               />
               <Legend />
-              <Bar dataKey="AVANÇO" fill="hsl(var(--primary))" name="Avanço Total">
-                <LabelList 
-                  dataKey="AVANÇO" 
-                  position="top" 
-                  formatter={(value: number) => `${value}%`}
-                  style={{ fill: 'hsl(var(--foreground))', fontWeight: 'bold' }}
-                />
-              </Bar>
-            </BarChart>
+              {dataKeys.map(key => (
+                <Line 
+                  key={key}
+                  type="monotone"
+                  dataKey={key}
+                  stroke={stringToColor(key)}
+                  strokeWidth={2}
+                  name={key}
+                  dot={false}
+                >
+                    <LabelList 
+                        dataKey={key} 
+                        position="top" 
+                        formatter={(value: number) => `${value}%`}
+                        style={{ fill: 'hsl(var(--foreground))', fontSize: '10px' }}
+                    />
+                </Line>
+              ))}
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </CardContent>
