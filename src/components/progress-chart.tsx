@@ -120,14 +120,14 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ data }) => {
               <Bar dataKey="NÃO INICIADO" stackId="a" fill="#d1d5db" name="Não Iniciado">
                 <LabelList dataKey="NÃO INICIADO" content={<CustomizedLabel data={data}/>} />
               </Bar>
-               <Bar dataKey="ATRASADA" stackId="a" fill="#ef4444" name="Atrasada">
-                <LabelList dataKey="ATRASADA" content={<CustomizedLabel data={data}/>} />
-              </Bar>
               <Bar dataKey="EM ANDAMENTO" stackId="a" fill="#3b82f6" name="Em Andamento">
                  <LabelList dataKey="EM ANDAMENTO" content={<CustomizedLabel data={data}/>} />
               </Bar>
               <Bar dataKey="CONCLUÍDO" stackId="a" fill="#22c55e" name="Concluído">
                  <LabelList dataKey="CONCLUÍDO" content={<CustomizedLabel data={data}/>} />
+              </Bar>
+               <Bar dataKey="ATRASADA" stackId="a" fill="#ef4444" name="Atrasada">
+                <LabelList dataKey="ATRASADA" content={<CustomizedLabel data={data}/>} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
