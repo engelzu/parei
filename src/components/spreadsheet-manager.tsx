@@ -727,7 +727,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                     >
                                       <ChevronDown className="h-3 w-3"/>
                                     </Button>
-                                    <span className="w-8 text-center font-medium">{row[header] || '0%'}</span>
+                                    <span className={cn("w-8 text-center font-medium", isSummaryRow && "text-lg font-bold")}>{row[header] || '0%'}</span>
                                     <Button 
                                       size="icon"
                                       variant="ghost" 
