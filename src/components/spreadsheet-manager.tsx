@@ -398,7 +398,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     return Math.round(totalAdvance / updaterTasks.length);
   }, [activeFilters, processedData]);
 
-  const barChartData = useMemo<ChartData[]>(() => {
+ const barChartData = useMemo<ChartData[]>(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -418,9 +418,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 dataByArea[area]['CON']++;
             } else if (avancoNum > 0) {
                 dataByArea[area]['AND']++;
-            } else { // avancoNum is 0 or NaN, considered "Não Iniciado"
+            } else { // avancoNum is 0 or NaN
                 dataByArea[area]['NI']++;
-                // A task is "Atrasada" if it's not started (avanço 0) and its start date has passed.
                 if (startDate && startDate.getTime() < today.getTime()) {
                     dataByArea[area]['ATR']++;
                 }
@@ -532,6 +531,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         return { dailyLogChartData: [], dailyLogChartKeys: [] };
     }
 
+    // 1. Create a map of task ID to its area for all non-summary tasks
     const taskToAreaMap = initialData.reduce((acc, row) => {
         if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não' && row.id) {
             acc[String(row.id)] = String(row['ÁREA'] || 'N/A');
@@ -541,43 +541,55 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
     const allAreas = Array.from(new Set(Object.values(taskToAreaMap))).sort();
 
+    // 2. Group logs by date, ensuring we only consider tasks with a mapped area
     const logsByDate: Record<string, { taskId: string; progress: number }[]> = {};
     initialLogData.forEach(log => {
-        try {
-            const timestamp = new Date(log.TIMESTAMP);
-            if (isNaN(timestamp.getTime())) return;
-            const dateStr = timestamp.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' });
-            if (!logsByDate[dateStr]) {
-                logsByDate[dateStr] = [];
-            }
-            logsByDate[dateStr].push({
-                taskId: String(log.ID_TAREFA),
-                progress: parseFloat(String(log.AVANCO_PERCENTUAL)),
-            });
-        } catch (e) { /* Ignore malformed logs */ }
+        const taskId = String(log.ID_TAREFA);
+        if (taskToAreaMap[taskId]) { // Only process logs for relevant tasks
+            try {
+                const timestamp = new Date(log.TIMESTAMP);
+                if (isNaN(timestamp.getTime())) return;
+                const dateStr = timestamp.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' });
+                if (!logsByDate[dateStr]) {
+                    logsByDate[dateStr] = [];
+                }
+                logsByDate[dateStr].push({
+                    taskId,
+                    progress: parseFloat(String(log.AVANCO_PERCENTUAL)),
+                });
+            } catch (e) { /* Ignore malformed logs */ }
+        }
     });
 
+    // 3. Get sorted list of dates with logs
     const sortedDates = Object.keys(logsByDate).sort((a, b) => {
         const [dayA, monthA, yearA] = a.split('/');
         const [dayB, monthB, yearB] = b.split('/');
         return new Date(`20${yearA}-${monthA}-${dayA}`).getTime() - new Date(`20${yearB}-${monthB}-${dayB}`).getTime();
     });
 
-    const dailyStates: DailyProgressChartData[] = [];
-    const currentTaskProgress: Record<string, number> = {};
+    if (sortedDates.length === 0) {
+        return { dailyLogChartData: [], dailyLogChartKeys: [] };
+    }
 
-    initialData.forEach(task => {
-        if (String(task['RESUMO(SIM/NÃO)']).toLowerCase() === 'não' && task.id) {
-            currentTaskProgress[String(task.id)] = 0;
-        }
+    // 4. Iterate through dates, building a cumulative state of progress
+    const dailyStates: DailyProgressChartData[] = [];
+    // Initialize currentTaskProgress with 0 for all tasks
+    const currentTaskProgress: Record<string, number> = {};
+    Object.keys(taskToAreaMap).forEach(taskId => {
+        currentTaskProgress[taskId] = 0;
     });
 
-    sortedDates.forEach(date => {
+    for (const date of sortedDates) {
         const todaysLogs = logsByDate[date] || [];
+        // Update the progress state with the latest log for each task on this day
         todaysLogs.forEach(log => {
-            currentTaskProgress[log.taskId] = log.progress;
+            if (typeof log.progress === 'number' && !isNaN(log.progress)) {
+                currentTaskProgress[log.taskId] = log.progress;
+            }
         });
 
+        // Calculate the average progress for each area based on the current state
         const progressByArea: Record<string, { total: number; count: number }> = {};
         allAreas.forEach(area => {
             progressByArea[area] = { total: 0, count: 0 };
@@ -585,20 +597,21 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
         Object.keys(currentTaskProgress).forEach(taskId => {
             const area = taskToAreaMap[taskId];
-            if (area && progressByArea[area]) {
+            if (area) { // Area will always exist due to the initial filter
                 progressByArea[area].total += currentTaskProgress[taskId];
                 progressByArea[area].count++;
             }
         });
-
+        
+        // Create the chart entry for the current date
         const chartEntry: DailyProgressChartData = { date };
         allAreas.forEach(area => {
             const areaData = progressByArea[area];
             chartEntry[area] = areaData.count > 0 ? Math.round(areaData.total / areaData.count) : 0;
         });
         dailyStates.push(chartEntry);
-    });
-
+    }
+    
     return { dailyLogChartData: dailyStates, dailyLogChartKeys: allAreas };
 }, [initialLogData, initialData]);
 
