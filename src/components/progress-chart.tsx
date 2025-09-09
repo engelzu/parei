@@ -25,6 +25,7 @@ export interface ChartData {
   'CONCLUÍDO': number;
   'EM ANDAMENTO': number;
   'NÃO INICIADO': number;
+  'ATRASADA': number;
 }
 
 interface ProgressChartProps {
@@ -71,7 +72,7 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ data }) => {
 
   const chartItem = data[0];
 
-  if (!data || data.length === 0 || (chartItem['CONCLUÍDO'] === 0 && chartItem['EM ANDAMENTO'] === 0 && chartItem['NÃO INICIADO'] === 0)) {
+  if (!data || data.length === 0 || (chartItem['CONCLUÍDO'] === 0 && chartItem['EM ANDAMENTO'] === 0 && chartItem['NÃO INICIADO'] === 0 && chartItem['ATRASADA'] === 0)) {
     return (
       <Card>
         <CardHeader>
@@ -118,6 +119,9 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ data }) => {
               <Legend />
               <Bar dataKey="NÃO INICIADO" stackId="a" fill="#d1d5db" name="Não Iniciado">
                 <LabelList dataKey="NÃO INICIADO" content={<CustomizedLabel data={data}/>} />
+              </Bar>
+               <Bar dataKey="ATRASADA" stackId="a" fill="#ef4444" name="Atrasada">
+                <LabelList dataKey="ATRASADA" content={<CustomizedLabel data={data}/>} />
               </Bar>
               <Bar dataKey="EM ANDAMENTO" stackId="a" fill="#3b82f6" name="Em Andamento">
                  <LabelList dataKey="EM ANDAMENTO" content={<CustomizedLabel data={data}/>} />

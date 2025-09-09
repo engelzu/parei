@@ -399,22 +399,30 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   }, [activeFilters, processedData]);
 
   const barChartData = useMemo<ChartData[]>(() => {
-    const dataByArea: Record<string, { [key: string]: number, 'CON': number, 'AND': number, 'NI': number }> = {};
-    const statusMapping: Record<string, 'CON' | 'AND' | 'NI'> = {
-        'CON': 'CON',
-        'AND': 'AND',
-        'NI': 'NI',
-    };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dataByArea: Record<string, { 'CON': number, 'AND': number, 'NI': number, 'ATR': number }> = {};
 
     filteredData.forEach(row => {
       const area = String(row['ÁREA'] || 'N/A');
       if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
         if (!dataByArea[area]) {
-          dataByArea[area] = { 'CON': 0, 'AND': 0, 'NI': 0 };
+          dataByArea[area] = { 'CON': 0, 'AND': 0, 'NI': 0, 'ATR': 0 };
         }
-        const status = statusMapping[String(row['STATUS'])];
-        if (status) {
-          dataByArea[area][status]++;
+        
+        const status = String(row['STATUS']);
+        if (status === 'NI') {
+          const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
+          if (startDate && startDate.getTime() < today.getTime()) {
+            dataByArea[area]['ATR']++;
+          } else {
+            dataByArea[area]['NI']++;
+          }
+        } else if (status === 'AND') {
+          dataByArea[area]['AND']++;
+        } else if (status === 'CON') {
+          dataByArea[area]['CON']++;
         }
       }
     });
@@ -425,6 +433,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         'CONCLUÍDO': dataByArea[area]['CON'],
         'EM ANDAMENTO': dataByArea[area]['AND'],
         'NÃO INICIADO': dataByArea[area]['NI'],
+        'ATRASADA': dataByArea[area]['ATR'],
       }))
       .sort((a, b) => a.area.localeCompare(b.area));
   }, [filteredData]);
@@ -521,8 +530,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     if (!initialLogData || initialLogData.length === 0 || initialData.length === 0) {
         return { dailyLogChartData: [], dailyLogChartKeys: [] };
     }
-    
-    // 1. Mapeia ID da tarefa para sua área
+
     const taskToAreaMap = initialData.reduce((acc, row) => {
         if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
             acc[String(row.id)] = String(row['ÁREA'] || 'N/A');
@@ -530,8 +538,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         return acc;
     }, {} as Record<string, string>);
 
-    // 2. Processa os logs e agrupa por data
-    const logsByDate: Record<string, { taskId: string, progress: number }[]> = {};
+    const logsByDateAndTask: Record<string, Record<string, number>> = {};
     const allDates = new Set<string>();
 
     initialLogData.forEach(log => {
@@ -544,33 +551,28 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         const progress = parseFloat(String(log.AVANCO_PERCENTUAL));
 
         if (dateStr && taskId && !isNaN(progress)) {
-            if (!logsByDate[dateStr]) {
-                logsByDate[dateStr] = [];
+            if (!logsByDateAndTask[dateStr]) {
+                logsByDateAndTask[dateStr] = {};
             }
-            logsByDate[dateStr].push({ taskId, progress });
+            logsByDateAndTask[dateStr][taskId] = progress;
             allDates.add(dateStr);
         }
       } catch (e) { /* Ignora logs malformados */ }
     });
 
-    // 3. Ordena as datas para processamento cronológico
     const sortedDates = Array.from(allDates).sort((a, b) => {
         const [dayA, monthA, yearA] = a.split('/');
         const [dayB, monthB, yearB] = b.split('/');
         return new Date(`20${yearA}-${monthA}-${dayA}`).getTime() - new Date(`20${yearB}-${monthB}-${dayB}`).getTime();
     });
     
-    // 4. Calcula o estado de cada dia
-    const dailyStates: Record<string, DailyProgressChartData> = {};
+    const dailyStates: DailyProgressChartData[] = [];
     const latestTaskProgress: Record<string, number> = {};
 
     sortedDates.forEach(date => {
-        const todaysLogs = logsByDate[date] || [];
-        todaysLogs.forEach(log => {
-            latestTaskProgress[log.taskId] = log.progress;
-        });
-
-        // Agrupa o estado ATUAL por área
+        const todaysLogs = logsByDateAndTask[date] || {};
+        Object.assign(latestTaskProgress, todaysLogs);
+        
         const progressByArea: Record<string, { total: number; count: number }> = {};
         for(const taskId in latestTaskProgress) {
             const area = taskToAreaMap[taskId];
@@ -581,32 +583,18 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             }
         }
         
-        // Formata para o gráfico
         const chartEntry: DailyProgressChartData = { date };
-        for (const area in progressByArea) {
-            const { total, count } = progressByArea[area];
-            chartEntry[area] = count > 0 ? Math.round(total / count) : 0;
-        }
-        dailyStates[date] = chartEntry;
-    });
-
-    // Garante que todas as áreas estejam presentes em todos os dias
-    const finalChartData = sortedDates.map(date => {
-      const entry = dailyStates[date];
-      Object.keys(taskToAreaMap).forEach(taskId => {
-        const area = taskToAreaMap[taskId];
-        if (entry[area] === undefined) {
-          // Se uma área não teve log, busca o valor do dia anterior
-          const previousDateIndex = sortedDates.indexOf(date) - 1;
-          if (previousDateIndex >= 0) {
-            const previousDate = sortedDates[previousDateIndex];
-            entry[area] = dailyStates[previousDate][area] || 0;
-          } else {
-            entry[area] = 0; // Primeiro dia
+        Object.keys(taskToAreaMap).forEach(taskId => {
+          const area = taskToAreaMap[taskId];
+          if(area){
+            if (!progressByArea[area]) {
+               chartEntry[area] = 0;
+            } else {
+               chartEntry[area] = Math.round(progressByArea[area].total / progressByArea[area].count);
+            }
           }
-        }
-      });
-      return entry;
+        });
+        dailyStates.push(chartEntry);
     });
     
     const allAreas = Object.keys(initialData.reduce((acc, row) => {
@@ -617,7 +605,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         return acc;
     }, {} as Record<string, boolean>)).sort();
 
-    return { dailyLogChartData: finalChartData, dailyLogChartKeys: allAreas };
+    return { dailyLogChartData: dailyStates, dailyLogChartKeys: allAreas };
   }, [initialLogData, initialData]);
 
 
