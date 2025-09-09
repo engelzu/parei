@@ -725,7 +725,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                             } else if (header === 'AVANÇO') {
                                 if (isSummaryRow) {
                                     cellContent = (
-                                        <span className="text-lg font-bold">
+                                        <span className="text-base font-bold">
                                             {row[header] || '0%'}
                                         </span>
                                     );
