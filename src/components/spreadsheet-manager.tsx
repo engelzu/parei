@@ -238,11 +238,11 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       let previsto = 0;
       if (startDate && endDate && startDate <= endDate && String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
         const totalDuration = endDate.getTime() - startDate.getTime();
-        const elapsedDuration = today.getTime() - startDate.getTime();
         
         if (today.getTime() >= endDate.getTime()) {
           previsto = 100;
         } else if (totalDuration > 0) {
+          const elapsedDuration = today.getTime() - startDate.getTime();
           previsto = Math.max(0, Math.min(100, (elapsedDuration / totalDuration) * 100));
         } else if (today.getTime() >= startDate.getTime()) {
             previsto = 100;
@@ -357,18 +357,17 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   }, [activeFilters, initialData]);
 
   const barChartData = useMemo<ChartData[]>(() => {
-    const dataByArea: Record<string, { total: number; count: number }> = {};
+    const dataByArea: Record<string, { [key: string]: number, 'CONCLUÍDO': number, 'EM ANDAMENTO': number, 'NÃO INICIADO': number }> = {};
 
     filteredData.forEach(row => {
       const area = String(row['ÁREA'] || 'N/A');
       if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
-        const advance = parseInt(String(row['AVANÇO'] || '0').replace('%', ''), 10);
         if (!dataByArea[area]) {
-          dataByArea[area] = { total: 0, count: 0 };
+          dataByArea[area] = { 'CONCLUÍDO': 0, 'EM ANDAMENTO': 0, 'NÃO INICIADO': 0 };
         }
-        if (!isNaN(advance)) {
-            dataByArea[area].total += advance;
-            dataByArea[area].count++;
+        const status = String(row['STATUS'] || 'NÃO INICIADO');
+        if (dataByArea[area][status] !== undefined) {
+          dataByArea[area][status]++;
         }
       }
     });
@@ -376,10 +375,13 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     return Object.keys(dataByArea)
       .map(area => ({
         area,
-        avanco: dataByArea[area].count > 0 ? Math.round(dataByArea[area].total / dataByArea[area].count) : 0,
+        'CONCLUÍDO': dataByArea[area]['CONCLUÍDO'],
+        'EM ANDAMENTO': dataByArea[area]['EM ANDAMENTO'],
+        'NÃO INICIADO': dataByArea[area]['NÃO INICIADO'],
       }))
-      .sort((a, b) => b.avanco - a.avanco);
+      .sort((a, b) => (b['CONCLUÍDO'] + b['EM ANDAMENTO']) - (a['CONCLUÍDO'] + a['EM ANDAMENTO']));
   }, [filteredData]);
+
 
   const lineChartDataByArea = useMemo<Record<string, LineChartData[]>>(() => {
     const dataByArea: Record<string, { totalRealizado: number; totalPrevisto: number; count: number }> = {};
@@ -681,7 +683,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                     </Button>
                                     <span className="w-12 text-center font-medium">{row[header] || '0%'}</span>
                                     <Button 
-                                      size="icon" 
+                                      size="icon" _
                                       variant="ghost" 
                                       className="h-7 w-7" 
                                       onClick={() => handleAdvanceChange(row.id, true)}
