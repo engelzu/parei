@@ -530,64 +530,62 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         return acc;
     }, {} as Record<string, string>);
 
-    // Agrupa os logs por data, depois por área, mantendo o avanço mais recente de cada tarefa
-    const progressByDateAndArea: Record<string, Record<string, Record<string, number>>> = {};
-
+    // Agrupa os logs por data, mantendo o avanço mais recente de cada tarefa para aquele dia
+    const progressByDate: Record<string, Record<string, number>> = {};
     initialLogData.forEach(log => {
       try {
         const date = new Date(log.TIMESTAMP).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
         const taskId = String(log.ID_TAREFA);
-        const area = taskToAreaMap[taskId];
         const progress = parseFloat(String(log.AVANCO_PERCENTUAL));
 
-        if (date && area && !isNaN(progress)) {
-            if (!progressByDateAndArea[date]) progressByDateAndArea[date] = {};
-            if (!progressByDateAndArea[date][area]) progressByDateAndArea[date][area] = {};
-            progressByDateAndArea[date][area][taskId] = progress; // Sobrescreve, mantendo o último log do dia
+        if (date && taskId && !isNaN(progress)) {
+            if (!progressByDate[date]) progressByDate[date] = {};
+            progressByDate[date][taskId] = progress;
         }
       } catch (e) { /* Ignora logs malformados */ }
     });
+    
+    // Obtém o estado inicial de todas as tarefas (antes do primeiro log)
+    const initialTaskProgress = initialData.reduce((acc, row) => {
+       if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
+           acc[String(row.id)] = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
+       }
+       return acc;
+    }, {} as Record<string, number>);
 
-    // Pega o estado mais recente de todas as tarefas da planilha principal
-    const latestTaskProgress = initialData.reduce((acc, row) => {
-      if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
-        const area = String(row['ÁREA'] || 'N/A');
-        const taskId = String(row.id);
-        const progress = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
-        if (!acc[area]) acc[area] = {};
-        if (!isNaN(progress)) {
-          acc[area][taskId] = progress;
-        }
-      }
-      return acc;
-    }, {} as Record<string, Record<string, number>>);
-
-
-    const sortedDates = Object.keys(progressByDateAndArea).sort((a, b) => {
+    // Ordena as datas para processamento cronológico
+    const sortedDates = Object.keys(progressByDate).sort((a, b) => {
         const [dayA, monthA, yearA] = a.split('/');
         const [dayB, monthB, yearB] = b.split('/');
         return new Date(`${yearA}-${monthA}-${dayA}`).getTime() - new Date(`${yearB}-${monthB}-${dayB}`).getTime();
     });
 
-    const finalChartData: DailyProgressChartData[] = sortedDates.map(date => {
-        const dailyLogs = progressByDateAndArea[date];
-        const chartEntry: DailyProgressChartData = { date };
+    // Estado cumulativo do avanço das tarefas
+    const cumulativeTaskProgress = { ...initialTaskProgress };
+    
+    const finalChartData = sortedDates.map(date => {
+        const dailyLogs = progressByDate[date];
+        
+        // Atualiza o estado cumulativo com os logs do dia
+        Object.assign(cumulativeTaskProgress, dailyLogs);
 
-        // Atualiza o estado geral com os logs do dia
-        for (const area in dailyLogs) {
-            if (!latestTaskProgress[area]) latestTaskProgress[area] = {};
-            Object.assign(latestTaskProgress[area], dailyLogs[area]);
+        // Agrupa o estado CUMULATIVO por área para calcular a média do dia
+        const progressByArea: Record<string, { total: number; count: number }> = {};
+        for (const taskId in cumulativeTaskProgress) {
+            const area = taskToAreaMap[taskId];
+            if (area) {
+                if (!progressByArea[area]) progressByArea[area] = { total: 0, count: 0 };
+                progressByArea[area].total += cumulativeTaskProgress[taskId];
+                progressByArea[area].count++;
+            }
         }
         
-        // Calcula a média para cada área com base no estado atualizado
-        for (const area in latestTaskProgress) {
-            const areaTasks = latestTaskProgress[area];
-            const totalAdvance = Object.values(areaTasks).reduce((acc, val) => acc + val, 0);
-            const taskCount = Object.keys(areaTasks).length;
-            const avgAdvance = taskCount > 0 ? totalAdvance / taskCount : 0;
-            chartEntry[area] = Math.round(avgAdvance);
+        const chartEntry: DailyProgressChartData = { date };
+        for (const area in progressByArea) {
+            const { total, count } = progressByArea[area];
+            chartEntry[area] = count > 0 ? Math.round(total / count) : 0;
         }
-
+        
         return chartEntry;
     });
 
