@@ -55,9 +55,11 @@ import {
   Download,
   Eraser,
   X,
+  LineChart as LineChartIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProgressChart, type ChartData } from '@/components/progress-chart';
+import { PlannedRealizedChart, type LineChartData } from '@/components/line-chart';
 
 interface SpreadsheetManagerProps {
   initialData: SheetRow[];
@@ -158,7 +160,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [isSaving, startSaving] = useTransition();
   const [isMobileFilterOpen, setMobileFilterOpen] = useState(false);
   const { toast } = useToast();
-  const [currentView, setCurrentView] = useState<'table' | 'chart'>('table');
+  const [currentView, setCurrentView] = useState<'table' | 'bar-chart' | 'line-chart'>('table');
 
 
   useEffect(() => {
@@ -335,7 +337,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     return Math.round(totalAdvance / updaterTasks.length);
   }, [activeFilters, initialData]);
 
-  const chartData = useMemo<ChartData[]>(() => {
+  const barChartData = useMemo<ChartData[]>(() => {
     const dataByArea: Record<string, { total: number; count: number }> = {};
 
     filteredData.forEach(row => {
@@ -356,6 +358,38 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         avanco: dataByArea[area].count > 0 ? Math.round(dataByArea[area].total / dataByArea[area].count) : 0,
       }))
       .sort((a, b) => b.avanco - a.avanco);
+  }, [filteredData]);
+
+  const lineChartData = useMemo<LineChartData[]>(() => {
+    const dataByArea: Record<string, { totalRealizado: number; totalPrevisto: number; count: number }> = {};
+
+    filteredData.forEach(row => {
+        const area = String(row['ÁREA'] || 'N/A');
+        if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
+            const realizado = parseInt(String(row['AVANÇO'] || '0').replace('%', ''), 10);
+            const previsto = parseInt(String(row['PREVISTO'] || '0').replace('%', ''), 10);
+
+            if (!dataByArea[area]) {
+                dataByArea[area] = { totalRealizado: 0, totalPrevisto: 0, count: 0 };
+            }
+
+            if (!isNaN(realizado)) {
+                dataByArea[area].totalRealizado += realizado;
+            }
+            if (!isNaN(previsto)) {
+                dataByArea[area].totalPrevisto += previsto;
+            }
+            dataByArea[area].count++;
+        }
+    });
+
+    return Object.keys(dataByArea)
+        .map(area => ({
+            area,
+            realizado: dataByArea[area].count > 0 ? Math.round(dataByArea[area].totalRealizado / dataByArea[area].count) : 0,
+            previsto: dataByArea[area].count > 0 ? Math.round(dataByArea[area].totalPrevisto / dataByArea[area].count) : 0,
+        }))
+        .sort((a, b) => a.area.localeCompare(b.area));
   }, [filteredData]);
 
   const totalPages = Math.ceil(filteredData.length / ROWS_PER_PAGE);
@@ -577,6 +611,129 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     );
   }
 
+  const renderContent = () => {
+    switch (currentView) {
+      case 'table':
+        return (
+          <>
+            <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+              <div className="h-[60vh] overflow-auto">
+                <Table className="relative min-w-full">
+                  <TableHeader className="sticky top-0 z-10 bg-primary">
+                    <TableRow className="border-b-0 hover:bg-primary/90">
+                      {visibleHeaders.map(header => (
+                        <TableHead key={header} className="whitespace-nowrap border-r text-center text-primary-foreground">{header}</TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedData.length > 0 ? (
+                      paginatedData.map(row => (
+                        <TableRow 
+                          key={row.id}
+                          className={cn('bg-card', {
+                            'text-primary font-bold': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
+                          })}
+                        >
+                          {visibleHeaders.map(header => {
+                            const isSummaryRow = String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim';
+                            let cellContent;
+
+                            if (header === 'INÍCIO DA LINHA DE BASE' || header === 'TÉRMINO DA LINHA DE BASE') {
+                                cellContent = formatDateValue(row[header]);
+                            } else if (header === 'AVANÇO') {
+                                cellContent = (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-7 w-7" 
+                                      onClick={() => handleAdvanceChange(row.id, false)}
+                                      disabled={isSummaryRow}
+                                    >
+                                      <ChevronDown className="h-4 w-4"/>
+                                    </Button>
+                                    <span className="w-12 text-center font-medium">{row[header] || '0%'}</span>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-7 w-7" 
+                                      onClick={() => handleAdvanceChange(row.id, true)}
+                                      disabled={isSummaryRow}
+                                    >
+                                      <ChevronUp className="h-4 w-4"/>
+                                    </Button>
+                                  </div>
+                                );
+                            } else if (header === 'DESVIO') {
+                                const desvioValue = parseFloat(String(row.DESVIO).replace('%', ''));
+                                const colorClass = desvioValue < 0 ? 'text-red-500' : desvioValue > 0 ? 'text-green-500' : 'text-gray-500';
+                                cellContent = <span className={cn('font-bold', colorClass)}>{row.DESVIO}</span>;
+                            } else {
+                                cellContent = String(row[header] || '-');
+                            }
+
+                            return (
+                              <TableCell 
+                                key={`${row.id}-${header}`} 
+                                className={cn("border-r text-center", 
+                                  header === 'NOME DA TAREFA' ? 'whitespace-normal max-w-[200px]' : 'whitespace-nowrap'
+                                )}
+                              >
+                                {cellContent}
+                              </TableCell>
+                            )
+                          })}
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={visibleHeaders.length} className="h-24 text-center">
+                          Nenhum resultado encontrado.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+            <div className="flex items-center justify-between mt-4 flex-wrap gap-4">
+              <p className="text-sm text-muted-foreground">
+                Mostrando {paginatedData.length > 0 ? (currentPage - 1) * ROWS_PER_PAGE + 1 : 0} a {Math.min(currentPage * ROWS_PER_PAGE, filteredData.length)} de {filteredData.length} registros.
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  Anterior
+                </Button>
+                <div className="hidden sm:flex items-center gap-1">{renderPagination()}</div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Próxima
+                </Button>
+              </div>
+            </div>
+          </>
+        );
+      case 'bar-chart':
+        return <ProgressChart data={barChartData} />;
+      case 'line-chart':
+        return <PlannedRealizedChart data={lineChartData} />;
+      default:
+        return null;
+    }
+  };
+
+
   return (
     <Card className="border-0 shadow-none sm:border sm:shadow-sm bg-transparent">
       <CardHeader>
@@ -602,8 +759,11 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     )}
                     SALVAR
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setCurrentView(currentView === 'table' ? 'chart' : 'table')} className="border-primary/50 uppercase">
-                    <BarChart className="mr-2 h-4 w-4" /> {currentView === 'table' ? 'GRÁFICO' : 'TABELA'}
+                 <Button variant="outline" size="sm" onClick={() => setCurrentView(currentView === 'table' ? 'bar-chart' : 'table')} className="border-primary/50 uppercase">
+                    <BarChart className="mr-2 h-4 w-4" /> {currentView === 'bar-chart' ? 'TABELA' : 'GRÁFICO'}
+                </Button>
+                 <Button variant="outline" size="sm" onClick={() => setCurrentView(currentView === 'table' ? 'line-chart' : 'table')} className="border-primary/50 uppercase">
+                    <LineChartIcon className="mr-2 h-4 w-4" /> {currentView === 'line-chart' ? 'TABELA' : 'CURVA S'}
                 </Button>
                 <Button size="sm" variant="outline" onClick={handleExport} className="border-primary/50 uppercase">
                     <Download className="mr-2 h-4 w-4" />
@@ -700,118 +860,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             </Button>
             <FilterControls />
         </div>
-        {currentView === 'table' ? (
-        <>
-        <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-          <div className="h-[60vh] overflow-auto">
-            <Table className="relative min-w-full">
-              <TableHeader className="sticky top-0 z-10 bg-primary">
-                <TableRow className="border-b-0 hover:bg-primary/90">
-                  {visibleHeaders.map(header => (
-                    <TableHead key={header} className="whitespace-nowrap border-r text-center text-primary-foreground">{header}</TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedData.length > 0 ? (
-                  paginatedData.map(row => (
-                    <TableRow 
-                      key={row.id}
-                      className={cn('bg-card', {
-                        'text-primary font-bold': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
-                      })}
-                    >
-                      {visibleHeaders.map(header => {
-                        const isSummaryRow = String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim';
-                        let cellContent;
-
-                        if (header === 'INÍCIO DA LINHA DE BASE' || header === 'TÉRMINO DA LINHA DE BASE') {
-                            cellContent = formatDateValue(row[header]);
-                        } else if (header === 'AVANÇO') {
-                            cellContent = (
-                              <div className="flex items-center justify-center gap-2">
-                                <Button 
-                                  size="icon" 
-                                  variant="ghost" 
-                                  className="h-7 w-7" 
-                                  onClick={() => handleAdvanceChange(row.id, false)}
-                                  disabled={isSummaryRow}
-                                >
-                                  <ChevronDown className="h-4 w-4"/>
-                                </Button>
-                                <span className="w-12 text-center font-medium">{row[header] || '0%'}</span>
-                                <Button 
-                                  size="icon" 
-                                  variant="ghost" 
-                                  className="h-7 w-7" 
-                                  onClick={() => handleAdvanceChange(row.id, true)}
-                                  disabled={isSummaryRow}
-                                >
-                                  <ChevronUp className="h-4 w-4"/>
-                                </Button>
-                              </div>
-                            );
-                        } else if (header === 'DESVIO') {
-                            const desvioValue = parseFloat(String(row.DESVIO).replace('%', ''));
-                            const colorClass = desvioValue < 0 ? 'text-red-500' : desvioValue > 0 ? 'text-green-500' : 'text-gray-500';
-                            cellContent = <span className={cn('font-bold', colorClass)}>{row.DESVIO}</span>;
-                        } else {
-                            cellContent = String(row[header] || '-');
-                        }
-
-                        return (
-                          <TableCell 
-                            key={`${row.id}-${header}`} 
-                            className={cn("border-r text-center", 
-                              header === 'NOME DA TAREFA' ? 'whitespace-normal max-w-[200px]' : 'whitespace-nowrap'
-                            )}
-                          >
-                            {cellContent}
-                          </TableCell>
-                        )
-                      })}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={visibleHeaders.length} className="h-24 text-center">
-                      Nenhum resultado encontrado.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
-        <div className="flex items-center justify-between mt-4 flex-wrap gap-4">
-          <p className="text-sm text-muted-foreground">
-            Mostrando {paginatedData.length > 0 ? (currentPage - 1) * ROWS_PER_PAGE + 1 : 0} a {Math.min(currentPage * ROWS_PER_PAGE, filteredData.length)} de {filteredData.length} registros.
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              Anterior
-            </Button>
-            <div className="hidden sm:flex items-center gap-1">{renderPagination()}</div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-            >
-              Próxima
-            </Button>
-          </div>
-        </div>
-        </>
-        ) : (
-          <ProgressChart data={chartData} />
-        )}
+        {renderContent()}
       </CardContent>
     </Card>
   );
