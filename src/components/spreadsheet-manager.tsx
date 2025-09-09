@@ -114,22 +114,23 @@ const reorderHeaders = (headers: string[]): string[] => {
     if (!newHeaders.includes('STATUS')) newHeaders.push('STATUS');
     if (!newHeaders.includes('PREVISTO')) newHeaders.push('PREVISTO');
     if (!newHeaders.includes('DESVIO')) newHeaders.push('DESVIO');
+    if (!newHeaders.includes('ID')) newHeaders.push('ID');
     
     // Remove from current positions to re-insert later
-    const columnsToMove = ['AVANÇO', 'STATUS', 'PREVISTO', 'DESVIO'];
+    const columnsToMove = ['ID', 'AVANÇO', 'STATUS', 'PREVISTO', 'DESVIO'];
     newHeaders = newHeaders.filter(h => !columnsToMove.includes(h));
 
-    // Find insertion point
-    const nomeTarefaIndex = newHeaders.indexOf('NOME DA TAREFA');
+    // Add ID and AVANÇO to the beginning
+    newHeaders.unshift('ID', 'AVANÇO');
     
-    if (nomeTarefaIndex !== -1) {
-        // Insert 'AVANÇO' and 'STATUS' after 'NOME DA TAREFA'
-        newHeaders.splice(nomeTarefaIndex + 1, 0, 'AVANÇO', 'STATUS');
+    // Find insertion point for STATUS
+    const avancoIndex = newHeaders.indexOf('AVANÇO');
+    if (avancoIndex !== -1) {
+        newHeaders.splice(avancoIndex + 1, 0, 'STATUS');
     } else {
-        // Fallback: add to the end if 'NOME DA TAREFA' is not found
-        newHeaders.push('AVANÇO', 'STATUS');
+        newHeaders.push('STATUS');
     }
-    
+
     const terminoPrevistoIndex = newHeaders.indexOf('TÉRMINO PREVISTO');
     if(terminoPrevistoIndex !== -1) {
         newHeaders.splice(terminoPrevistoIndex + 1, 0, 'PREVISTO', 'DESVIO');
@@ -137,7 +138,7 @@ const reorderHeaders = (headers: string[]): string[] => {
         newHeaders.push('PREVISTO', 'DESVIO');
     }
 
-    return newHeaders;
+    return Array.from(new Set(newHeaders));
 };
 
 function formatDateValue(value: any): string {
@@ -242,6 +243,9 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     today.setHours(0, 0, 0, 0); 
 
     dataToProcess.forEach((row: SheetRow) => {
+      // Add ID column
+      row['ID'] = row['id'];
+
       // Calculate PREVISTO and DESVIO
       const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
       const endDate = parseDate(row['TÉRMINO DA LINHA DE BASE']);
