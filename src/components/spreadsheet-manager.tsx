@@ -793,10 +793,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     <Card className="border-0 shadow-none sm:border sm:shadow-sm bg-transparent">
       <CardHeader>
         <div className="flex flex-col items-center gap-4">
-            <div className="text-center">
+            <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-2">
                 <CardTitle className="text-2xl font-bold text-primary">PAREI v1.1 - GESTOR DE PARADAS INDUSTRIAIS</CardTitle>
-                <CardDescription className="text-primary/70">
-                    {lastUpdated ? `Última atualização com a base de dados: ${lastUpdated}` : 'Carregando...'}
+                <CardDescription className="text-primary/70 text-sm">
+                    {lastUpdated ? `Última atualização: ${lastUpdated}` : 'Carregando...'}
                 </CardDescription>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2">
