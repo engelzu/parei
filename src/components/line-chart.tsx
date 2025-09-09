@@ -40,7 +40,7 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
         <CardHeader>
           <CardTitle>Curva S - {area}</CardTitle>
           <CardDescription>
-            Não há dados suficientes para exibir o gráfico para esta área.
+            PREVISTO X REALIZADO
           </CardDescription>
         </CardHeader>
         <CardContent className="h-80 flex items-center justify-center">
@@ -53,10 +53,9 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
   const currentPrevisto = data[0].previsto;
   const currentRealizado = data[0].realizado;
   
-  // Simple trend calculation: if realized > previsto, trend is optimistic. Otherwise, pessimistic.
   const trendEndValue = currentPrevisto > 0 
     ? (currentRealizado / currentPrevisto) * 100
-    : currentRealizado; // Avoid division by zero
+    : currentRealizado;
 
   const chartData = [
       { name: 'Início', previsto: 0, realizado: 0, tendencia: 0 },
