@@ -267,6 +267,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       if (startDate && endDate && String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
         if (today.getTime() >= endDate.getTime()) {
           previsto = 100;
+        } else if (today.getTime() < startDate.getTime()){
+          previsto = 0;
         } else {
             const totalDuration = endDate.getTime() - startDate.getTime();
             if (totalDuration > 0) {
@@ -418,16 +420,25 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
 
   const lineChartDataByArea = useMemo<Record<string, LineChartData[]>>(() => {
-    const dataByArea: Record<string, { totalRealizado: number; totalPrevisto: number; count: number }> = {};
+    const dataByArea: Record<string, { 
+        totalRealizado: number; 
+        totalPrevisto: number; 
+        count: number;
+        endDate: Date | null;
+    }> = {};
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     filteredData.forEach(row => {
         const area = String(row['ÁREA'] || 'N/A');
         if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
             const realizado = parseInt(String(row['AVANÇO'] || '0').replace('%', ''), 10);
             const previsto = parseInt(String(row['PREVISTO'] || '0').replace('%', ''), 10);
+            const endDate = parseDate(row['TÉRMINO DA LINHA DE BASE']);
 
             if (!dataByArea[area]) {
-                dataByArea[area] = { totalRealizado: 0, totalPrevisto: 0, count: 0 };
+                dataByArea[area] = { totalRealizado: 0, totalPrevisto: 0, count: 0, endDate: null };
             }
 
             if (!isNaN(realizado)) {
@@ -439,15 +450,31 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             if(!isNaN(realizado) || !isNaN(previsto)) {
                dataByArea[area].count++;
             }
+            if (endDate && (!dataByArea[area].endDate || endDate > dataByArea[area].endDate!)) {
+                dataByArea[area].endDate = endDate;
+            }
         }
     });
     
     const chartData: Record<string, LineChartData[]> = {};
     for (const area in dataByArea) {
+      const areaData = dataByArea[area];
+      const realizado = areaData.count > 0 ? Math.round(areaData.totalRealizado / areaData.count) : 0;
+      const previsto = areaData.count > 0 ? Math.round(areaData.totalPrevisto / areaData.count) : 0;
+      const gap = realizado - previsto;
+
+      let diasRestantes = 0;
+      if (areaData.endDate) {
+          const diffTime = areaData.endDate.getTime() - today.getTime();
+          diasRestantes = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+      }
+
       chartData[area] = [{
         name: area,
-        realizado: dataByArea[area].count > 0 ? Math.round(dataByArea[area].totalRealizado / dataByArea[area].count) : 0,
-        previsto: dataByArea[area].count > 0 ? Math.round(dataByArea[area].totalPrevisto / dataByArea[area].count) : 0,
+        realizado,
+        previsto,
+        gap,
+        diasRestantes,
       }];
     }
 
@@ -477,7 +504,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     setCurrentPage(1);
   };
 
-  const triggerSave = useCallback((dataToSave: SheetRow[]) => {
+   const triggerSave = useCallback((dataToSave: SheetRow[]) => {
     startSaving(async () => {
       const result = await saveDataToSheet(reorderHeaders(initialHeaders), dataToSave);
       if (result.success) {
@@ -498,16 +525,19 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
 
   const handleAdvanceChange = (id: number, increment: boolean) => {
-    const updatedData = allData.map(row => {
-      if (row.id === id) {
-        const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
-        const newValue = increment ? Math.min(100, current + 5) : Math.max(0, current - 5);
-        return { ...row, 'AVANÇO': `${newValue}%` };
-      }
-      return row;
+    let updatedData;
+    setAllData(currentData => {
+        updatedData = currentData.map(row => {
+          if (row.id === id) {
+            const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
+            const newValue = increment ? Math.min(100, current + 5) : Math.max(0, current - 5);
+            return { ...row, 'AVANÇO': `${newValue}%` };
+          }
+          return row;
+        });
+        triggerSave(updatedData);
+        return updatedData;
     });
-    setAllData(updatedData);
-    triggerSave(updatedData);
   };
 
   const handleOrderClick = (order: string) => {

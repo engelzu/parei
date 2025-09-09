@@ -25,10 +25,12 @@ export interface LineChartData {
   previsto: number;
   realizado: number;
   tendencia?: number;
+  gap: number;
+  diasRestantes: number;
 }
 
 interface PlannedRealizedChartProps {
-  data: { name: string; previsto: number; realizado: number }[];
+  data: { name: string; previsto: number; realizado: number, gap: number, diasRestantes: number }[];
   area: string;
 }
 
@@ -50,8 +52,8 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
     )
   }
   
-  const currentPrevisto = data[0].previsto;
-  const currentRealizado = data[0].realizado;
+  const currentData = data[0];
+  const { previsto: currentPrevisto, realizado: currentRealizado, gap, diasRestantes } = currentData;
   
   const trendEndValue = currentPrevisto > 0 
     ? (currentRealizado / currentPrevisto) * 100
@@ -63,9 +65,11 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
       { name: 'Fim', previsto: 100, tendencia: trendEndValue > 0 ? trendEndValue : undefined },
   ];
 
+  const dailyProgressNeeded = diasRestantes > 0 ? (100 - currentRealizado) / diasRestantes : 0;
+
 
   return (
-    <Card className="bg-card">
+    <Card className="bg-card relative">
       <CardHeader>
         <CardTitle>Curva S - {area}</CardTitle>
         <CardDescription>
@@ -73,7 +77,29 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-80 w-full">
+        <div className="h-80 w-full relative">
+            <div className="absolute top-0 right-0 z-10 p-2">
+                <Card className="bg-background/80 backdrop-blur-sm">
+                    <CardHeader className="p-3">
+                        <CardTitle className="text-sm">Diagnóstico Rápido</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 pt-0 text-xs">
+                        {gap > 0 ? (
+                           <p>A área está <span className="font-bold text-green-500">{gap.toFixed(0)}%</span> à frente do previsto.</p>
+                        ) : (
+                           <p>A área está <span className="font-bold text-red-500">{Math.abs(gap).toFixed(0)}%</span> atrás do previsto.</p>
+                        )}
+                        {dailyProgressNeeded > 0 && diasRestantes > 0 && (
+                            <p className="mt-1">
+                                Precisa de <span className="font-bold">{dailyProgressNeeded.toFixed(1)}%</span>/dia por <span className="font-bold">{diasRestantes}</span> dias para atingir a meta.
+                            </p>
+                        )}
+                         {currentRealizado === 100 && (
+                            <p className="mt-1 font-bold text-primary">Área concluída!</p>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
