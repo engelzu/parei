@@ -49,7 +49,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { saveDataToSheet } from '@/app/actions';
+import { saveDataToSheet, saveSingleRow } from '@/app/actions';
 import type { SheetRow } from '@/lib/types';
 import {
   RotateCw,
@@ -69,6 +69,7 @@ import {
   TableIcon,
   AreaChart,
   History,
+  CheckCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProgressChart, type ChartData } from '@/components/progress-chart';
@@ -188,6 +189,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [currentView, setCurrentView] = useState<'table' | 'bar-chart' | 'line-chart' | 'area-progress-chart' | 'daily-log-chart'>('table');
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [updatedRows, setUpdatedRows] = useState<SheetRow[]>([]);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+
 
   useEffect(() => {
     setLastUpdated(new Date().toLocaleString('pt-BR'));
@@ -625,6 +628,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const handleAdvanceChange = (id: number, increment: boolean) => {
     let updatedRow: SheetRow | undefined;
+    
+    // First, update the local state immediately for a responsive UI
     setAllData(currentData => {
         const newData = currentData.map(row => {
             if (row.id === id) {
@@ -639,10 +644,21 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         return newData;
     });
 
+    // Then, trigger the save operation in the background
     if (updatedRow) {
-        setUpdatedRows(prev => {
-            const otherRows = prev.filter(r => r.id !== id);
-            return [...otherRows, updatedRow!];
+        setIsAutoSaving(true);
+        startSaving(async () => {
+            const result = await saveSingleRow(updatedRow!);
+            if (!result.success) {
+                toast({
+                    variant: "destructive",
+                    title: "Erro no Salvamento Automático",
+                    description: result.message,
+                });
+                // Optional: Revert local state if save fails
+                setAllData(initialData); 
+            }
+             setIsAutoSaving(false);
         });
     }
   };
@@ -653,7 +669,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     setSelectedOrder(order);
   };
 
-  const handleSave = () => {
+  const handleManualSave = () => {
     startSaving(async () => {
         const result = await saveDataToSheet(reorderHeaders(initialHeaders), allData, updatedRows);
         if (result.success) {
@@ -663,7 +679,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 description: "Suas alterações foram gravadas na planilha.",
                 duration: 3000,
             });
-            // Consider reloading to get fresh log data, or updating it in state
              window.location.reload();
         } else {
             toast({
@@ -1103,13 +1118,9 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 <div className="flex items-center justify-center p-2 bg-primary text-primary-foreground rounded-md text-sm font-medium uppercase h-9">
                   IDs: {filteredData.length}
                 </div>
-                 <Button size="sm" onClick={handleSave} disabled={isSaving} className="uppercase">
-                    {isSaving ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                        <Save className="mr-2 h-4 w-4" />
-                    )}
-                    SALVAR
+                 <Button size="sm" onClick={handleManualSave} disabled={isSaving || isAutoSaving} className="uppercase">
+                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : isAutoSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    {isAutoSaving ? 'SALVANDO...' : 'SALVAR'}
                 </Button>
                  <ViewButtons />
                 <Button size="sm" variant="outline" onClick={handleExport} className="border-primary/50 uppercase">
