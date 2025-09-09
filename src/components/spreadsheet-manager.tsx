@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import * as XLSX from 'xlsx';
 
 import {
   Table,
@@ -232,12 +233,11 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [isLoadingProject, setIsLoadingProject] = useState(true);
   
   useEffect(() => {
-    // This effect ensures we only show the content when the client-side
-    // state has been synchronized with the server-rendered data.
-    if (searchParams.get('sheetId') === currentSheetId) {
-      setIsLoadingProject(false);
+    // Only turn off loading when the component has mounted and the data for the current ID is confirmed
+    if (currentSheetId === searchParams.get('sheetId') || (!searchParams.get('sheetId') && currentSheetId === defaultProjects[0].id)) {
+        setIsLoadingProject(false);
     }
-  }, [currentSheetId, searchParams]);
+  }, [currentSheetId, searchParams, initialData]);
 
   useEffect(() => {
     setAllData(initialData);
@@ -831,31 +831,15 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     });
   };
 
-  const handleExport = async () => {
-    const XLSX = await import('xlsx');
-    const dataToExport = filteredData.map(row => {
-        const newRow: Record<string, any> = {};
-        headers.forEach(header => {
-            newRow[header] = row[header];
-        });
-        return newRow;
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport, { header: headers });
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Dados");
-    XLSX.writeFile(workbook, "dados_exportados.xlsx");
-  };
-
   const handleDownloadTemplate = () => {
     const templateLink = "https://docs.google.com/spreadsheets/d/1ZiwhG9yHXxHh3AgVquWahV9CGKuCgTieIQBEfK5LmzI/copy";
-    window.open(templateLink, '_blank');
-     toast({
+    toast({
       title: "Copiando Template...",
-      description: "Uma nova aba será aberta para você fazer uma cópia da planilha modelo.",
+      description: "FAÇA UMA CÓPIA para seu PROJETO e de um NOME a nova PLANILHA.",
     });
+    window.open(templateLink, '_blank');
   };
-  
+
   const clearFilters = () => {
     setSearchTerm('');
     setActiveFilters({ 'ÁREA': [], 'RESPONSÁVEL': [], 'ATUALIZADOR 1(EMAIL)': [] });
@@ -1294,7 +1278,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     {isAutoSaving ? 'SALVANDO...' : 'SALVAR'}
                 </Button>
                  <ViewButtons />
-                <Button size="sm" variant="outline" onClick={handleExport} className="border-primary/50 uppercase">
+                <Button size="sm" variant="outline" onClick={handleDownloadTemplate} className="border-primary/50 uppercase">
                     <Download className="mr-2 h-4 w-4" />
                     EXPORTAR
                 </Button>
