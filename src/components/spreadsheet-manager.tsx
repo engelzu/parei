@@ -669,11 +669,11 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
           <>
             <ScrollArea className="w-full whitespace-nowrap rounded-md border">
               <div className="h-[60vh] overflow-auto">
-                <Table className="relative min-w-full">
+                <Table className="relative min-w-full text-xs">
                   <TableHeader className="sticky top-0 z-10 bg-primary">
                     <TableRow className="border-b-0 hover:bg-primary/90">
                       {visibleHeaders.map(header => (
-                        <TableHead key={header} className="whitespace-nowrap border-r text-center text-primary-foreground">{header}</TableHead>
+                        <TableHead key={header} className="whitespace-nowrap border-r text-center text-primary-foreground p-2">{header}</TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
@@ -694,25 +694,25 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                 cellContent = formatDateValue(row[header]);
                             } else if (header === 'AVANÇO') {
                                 cellContent = (
-                                  <div className="flex items-center justify-center gap-1">
+                                  <div className="flex items-center justify-center gap-0.5">
                                     <Button 
                                       size="icon" 
                                       variant="ghost" 
-                                      className="h-6 w-6" 
+                                      className="h-5 w-5" 
                                       onClick={() => handleAdvanceChange(row.id, false)}
                                       disabled={isSummaryRow}
                                     >
-                                      <ChevronDown className="h-4 w-4"/>
+                                      <ChevronDown className="h-3 w-3"/>
                                     </Button>
-                                    <span className="w-10 text-center font-medium">{row[header] || '0%'}</span>
+                                    <span className="w-8 text-center font-medium">{row[header] || '0%'}</span>
                                     <Button 
                                       size="icon"
                                       variant="ghost" 
-                                      className="h-6 w-6" 
+                                      className="h-5 w-5" 
                                       onClick={() => handleAdvanceChange(row.id, true)}
                                       disabled={isSummaryRow}
                                     >
-                                      <ChevronUp className="h-4 w-4"/>
+                                      <ChevronUp className="h-3 w-3"/>
                                     </Button>
                                   </div>
                                 );
@@ -731,7 +731,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                             return (
                               <TableCell 
                                 key={`${row.id}-${header}`} 
-                                className={cn("border-r text-center p-2", 
+                                className={cn("border-r text-center p-1", 
                                   header === 'NOME DA TAREFA' ? 'whitespace-normal max-w-[200px]' : 'whitespace-nowrap'
                                 )}
                               >
