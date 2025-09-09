@@ -67,10 +67,13 @@ import {
   X,
   LineChart as LineChartIcon,
   TableIcon,
+  AreaChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProgressChart, type ChartData } from '@/components/progress-chart';
 import { PlannedRealizedChart, type LineChartData } from '@/components/line-chart';
+import { AreaProgressChart, type AreaProgressChartData } from '@/components/area-progress-chart';
+
 
 interface SpreadsheetManagerProps {
   initialData: SheetRow[];
@@ -178,7 +181,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [isSaving, startSaving] = useTransition();
   const [isMobileFilterOpen, setMobileFilterOpen] = useState(false);
   const { toast } = useToast();
-  const [currentView, setCurrentView] = useState<'table' | 'bar-chart' | 'line-chart'>('table');
+  const [currentView, setCurrentView] = useState<'table' | 'bar-chart' | 'line-chart' | 'area-progress-chart'>('table');
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
 
   useEffect(() => {
@@ -480,6 +483,31 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
     return chartData;
   }, [filteredData]);
+
+  const areaProgressChartData = useMemo<AreaProgressChartData[]>(() => {
+    const dataByArea: Record<string, { totalAdvance: number; count: number }> = {};
+
+    filteredData.forEach(row => {
+      const area = String(row['ÁREA'] || 'N/A');
+      if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
+        if (!dataByArea[area]) {
+          dataByArea[area] = { totalAdvance: 0, count: 0 };
+        }
+        const advance = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
+        if (!isNaN(advance)) {
+          dataByArea[area].totalAdvance += advance;
+          dataByArea[area].count++;
+        }
+      }
+    });
+
+    return Object.keys(dataByArea)
+      .map(area => ({
+        area,
+        'AVANÇO MÉDIO': dataByArea[area].count > 0 ? Math.round(dataByArea[area].totalAdvance / dataByArea[area].count) : 0,
+      }))
+      .sort((a, b) => a['AVANÇO MÉDIO'] - b['AVANÇO MÉDIO']);
+  }, [filteredData]);
   
   const selectedOrderTasks = useMemo(() => {
       if (!selectedOrder) return [];
@@ -504,41 +532,41 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     setCurrentPage(1);
   };
 
-   const triggerSave = useCallback((dataToSave: SheetRow[]) => {
-    startSaving(async () => {
-      const result = await saveDataToSheet(reorderHeaders(initialHeaders), dataToSave);
-      if (result.success) {
-        toast({
-          title: "Salvo!",
-          description: "Os dados foram salvos automaticamente.",
-          duration: 2000,
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Erro ao Salvar",
-          description: result.message || 'Ocorreu um erro desconhecido ao salvar os dados.',
-        });
-      }
-    });
-  }, [initialHeaders, toast]);
-
-
   const handleAdvanceChange = (id: number, increment: boolean) => {
-    let updatedData;
+    let updatedData: SheetRow[] | undefined;
     setAllData(currentData => {
-        updatedData = currentData.map(row => {
-          if (row.id === id) {
-            const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
-            const newValue = increment ? Math.min(100, current + 5) : Math.max(0, current - 5);
-            return { ...row, 'AVANÇO': `${newValue}%` };
-          }
-          return row;
+        const newData = currentData.map(row => {
+            if (row.id === id) {
+                const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
+                const newValue = increment ? Math.min(100, current + 5) : Math.max(0, current - 5);
+                return { ...row, 'AVANÇO': `${newValue}%` };
+            }
+            return row;
         });
-        triggerSave(updatedData);
-        return updatedData;
+        updatedData = newData;
+        return newData;
     });
+
+    if (updatedData) {
+        startSaving(async () => {
+            const result = await saveDataToSheet(reorderHeaders(initialHeaders), updatedData!);
+            if (result.success) {
+                toast({
+                    title: "Salvo!",
+                    description: "Os dados foram salvos automaticamente.",
+                    duration: 2000,
+                });
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "Erro ao Salvar",
+                    description: result.message || 'Ocorreu um erro desconhecido ao salvar os dados.',
+                });
+            }
+        });
+    }
   };
+
 
   const handleOrderClick = (order: string) => {
     if (!order || order === '-') return;
@@ -546,7 +574,22 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   };
 
   const handleSave = () => {
-    triggerSave(allData);
+    startSaving(async () => {
+        const result = await saveDataToSheet(reorderHeaders(initialHeaders), allData);
+        if (result.success) {
+            toast({
+                title: "Salvo com sucesso!",
+                description: "Suas alterações foram gravadas na planilha.",
+                duration: 3000,
+            });
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Erro ao Salvar",
+                description: result.message || 'Ocorreu um erro desconhecido ao salvar os dados.',
+            });
+        }
+    });
   };
 
   const handleExport = async () => {
@@ -893,6 +936,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
               </div>
             </ScrollArea>
           );
+      case 'area-progress-chart':
+          return (
+            <ScrollArea className="h-[70vh] w-full">
+              <div className="p-4">
+                <AreaProgressChart data={areaProgressChartData} />
+              </div>
+            </ScrollArea>
+          );
       default:
         return null;
     }
@@ -923,6 +974,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         className="border-primary/50 uppercase"
       >
           <LineChartIcon className="mr-2 h-4 w-4" /> CURVA S
+      </Button>
+      <Button 
+        variant={currentView === 'area-progress-chart' ? 'default' : 'outline'}
+        size="sm" 
+        onClick={() => setCurrentView('area-progress-chart')} 
+        className="border-primary/50 uppercase"
+      >
+          <AreaChart className="mr-2 h-4 w-4" /> PROGRESSO
       </Button>
     </>
   );
@@ -1065,6 +1124,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-[80%]">Nome da Tarefa</TableHead>
+
                                     <TableHead className="text-right">Avanço</TableHead>
                                 </TableRow>
                             </TableHeader>
