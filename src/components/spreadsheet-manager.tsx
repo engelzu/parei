@@ -373,7 +373,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         String(row['ATUALIZADOR 1(EMAIL)']) === selectedUpdater &&
         String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não'
     );
-
+    
     if (updaterTasks.length === 0) return 0;
 
     const totalAdvance = updaterTasks.reduce((sum, task) => {
@@ -713,7 +713,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                         <TableRow 
                           key={row.id}
                            className={cn('bg-card', {
-                            'font-bold italic text-primary bg-primary/20': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
+                            'font-bold italic text-primary bg-green-100 dark:bg-green-900/20': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
                           })}
                         >
                           {visibleHeaders.map(header => {
