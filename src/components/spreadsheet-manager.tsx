@@ -988,7 +988,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-[80%]">Nome da Tarefa</TableHead>
-                                    <TableHead>Avanço</TableHead>
+                                    <TableHead className="text-right">Avanço</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -996,7 +996,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                     selectedOrderTasks.map(task => (
                                         <TableRow key={task.id}>
                                             <TableCell className="font-medium">{String(task['NOME DA TAREFA'])}</TableCell>
-                                            <TableCell>
+                                            <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-0.5">
                                                     <Button 
                                                         size="icon" 
