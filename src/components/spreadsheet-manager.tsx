@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useTransition, type FC, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -220,13 +220,25 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [updatedRows, setUpdatedRows] = useState<SheetRow[]>([]);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // All project management state is now handled on the client
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
   const [isAddProjectDialogOpen, setAddProjectDialogOpen] = useState(false);
-  const [isLoadingProject, setIsLoadingProject] = useState(false);
+  const [isLoadingProject, setIsLoadingProject] = useState(true); // Start with loading true
   
   const [projectToLoad, setProjectToLoad] = useState<Project | null>(null);
+  
+  // Effect to handle loading state based on navigation
+  useEffect(() => {
+    const sheetIdFromUrl = searchParams.get('sheetId');
+    if (sheetIdFromUrl && sheetIdFromUrl !== currentSheetId) {
+        setIsLoadingProject(true);
+    } else {
+        setIsLoadingProject(false);
+    }
+  }, [searchParams, currentSheetId]);
+
 
   const currentProject = useMemo(() => {
     return availableProjects.find(p => p.id === currentSheetId) || defaultProjects[0];
@@ -262,6 +274,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     } catch (error) {
       console.error("Failed to load projects from localStorage", error);
       setAvailableProjects(defaultProjects);
+    } finally {
+        setIsLoadingProject(false); // Stop loading after projects are loaded
     }
   }, []);
 
@@ -290,9 +304,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const confirmProjectChange = () => {
     if (projectToLoad) {
-      setIsLoadingProject(true); // Start loading overlay
       router.push(`/?sheetId=${encodeURIComponent(projectToLoad.id)}`);
-      // No need to setProjectToLoad(null) here because the page will reload.
+      setProjectToLoad(null);
     }
   };
 
