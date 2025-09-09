@@ -32,13 +32,15 @@ interface ProgressChartProps {
 }
 
 export const ProgressChart: React.FC<ProgressChartProps> = ({ data }) => {
-  if (!data || data.length === 0) {
+  const areaName = data.length > 0 ? data[0].area : 'N/A';
+
+  if (!data || data.length === 0 || (data[0]['CONCLUÍDO'] === 0 && data[0]['EM ANDAMENTO'] === 0 && data[0]['NÃO INICIADO'] === 0)) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Gráfico de Status de Tarefas por Área</CardTitle>
+          <CardTitle>Status de Tarefas - {areaName}</CardTitle>
           <CardDescription>
-            Não há dados suficientes para exibir o gráfico.
+            Não há dados suficientes para exibir o gráfico para esta área.
           </CardDescription>
         </CardHeader>
         <CardContent className="h-96 flex items-center justify-center">
@@ -51,13 +53,13 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ data }) => {
   return (
     <Card className="bg-card">
       <CardHeader>
-        <CardTitle>Gráfico de Status de Tarefas por Área</CardTitle>
+        <CardTitle>Status de Tarefas - {areaName}</CardTitle>
         <CardDescription>
-          Contagem de tarefas por status para cada área de atuação.
+          Contagem de tarefas por status para a área de atuação.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[70vh] w-full">
+        <div className="h-[40vh] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}
@@ -77,13 +79,13 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ data }) => {
               />
               <Legend />
               <Bar dataKey="NÃO INICIADO" stackId="a" fill="#d1d5db" name="Não Iniciado">
-                <LabelList dataKey="NÃO INICIADO" position="top" formatter={(value: number) => value > 0 ? value : ''} />
+                <LabelList dataKey="NÃO INICIADO" position="center" formatter={(value: number) => value > 0 ? value : ''} />
               </Bar>
               <Bar dataKey="EM ANDAMENTO" stackId="a" fill="#3b82f6" name="Em Andamento">
-                 <LabelList dataKey="EM ANDAMENTO" position="top" formatter={(value: number) => value > 0 ? value : ''} />
+                 <LabelList dataKey="EM ANDAMENTO" position="center" formatter={(value: number) => value > 0 ? value : ''} />
               </Bar>
               <Bar dataKey="CONCLUÍDO" stackId="a" fill="#22c55e" name="Concluído">
-                 <LabelList dataKey="CONCLUÍDO" position="top" formatter={(value: number) => value > 0 ? value : ''} />
+                 <LabelList dataKey="CONCLUÍDO" position="center" formatter={(value: number) => value > 0 ? value : ''} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>

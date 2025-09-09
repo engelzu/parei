@@ -379,7 +379,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         'EM ANDAMENTO': dataByArea[area]['EM ANDAMENTO'],
         'NÃO INICIADO': dataByArea[area]['NÃO INICIADO'],
       }))
-      .sort((a, b) => (b['CONCLUÍDO'] + b['EM ANDAMENTO']) - (a['CONCLUÍDO'] + a['EM ANDAMENTO']));
+      .sort((a, b) => a.area.localeCompare(b.area));
   }, [filteredData]);
 
 
@@ -757,7 +757,18 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
           </>
         );
       case 'bar-chart':
-        return <ProgressChart data={barChartData} />;
+        return (
+            <ScrollArea className="h-[70vh] w-full">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {barChartData.map(chartItem => (
+                  <ProgressChart 
+                    key={chartItem.area} 
+                    data={[chartItem]} 
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+        );
       case 'line-chart':
           return (
             <ScrollArea className="h-[70vh] w-full">
