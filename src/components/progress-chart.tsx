@@ -79,13 +79,13 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ data }) => {
               />
               <Legend />
               <Bar dataKey="NÃO INICIADO" stackId="a" fill="#d1d5db" name="Não Iniciado">
-                <LabelList dataKey="NÃO INICIADO" position="center" formatter={(value: number) => value > 0 ? value : ''} />
+                <LabelList dataKey="NÃO INICIADO" position="center" formatter={(value: number) => value > 0 ? value : ''} style={{ fontWeight: 'bold', fill: 'black' }} />
               </Bar>
               <Bar dataKey="EM ANDAMENTO" stackId="a" fill="#3b82f6" name="Em Andamento">
-                 <LabelList dataKey="EM ANDAMENTO" position="center" formatter={(value: number) => value > 0 ? value : ''} />
+                 <LabelList dataKey="EM ANDAMENTO" position="center" formatter={(value: number) => value > 0 ? value : ''} style={{ fontWeight: 'bold', fill: 'black' }} />
               </Bar>
               <Bar dataKey="CONCLUÍDO" stackId="a" fill="#22c55e" name="Concluído">
-                 <LabelList dataKey="CONCLUÍDO" position="center" formatter={(value: number) => value > 0 ? value : ''} />
+                 <LabelList dataKey="CONCLUÍDO" position="center" formatter={(value: number) => value > 0 ? value : ''} style={{ fontWeight: 'bold', fill: 'black' }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>

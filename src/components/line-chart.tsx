@@ -94,6 +94,7 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
                     dataKey="previsto" 
                     position="top" 
                     formatter={(value: number) => value > 0 ? `${value}%` : ''} 
+                    style={{ fontWeight: 'bold', fill: 'black' }}
                 />
               </Line>
               <Line type="monotone" dataKey="realizado" name="Realizado" stroke="hsl(var(--primary))" strokeWidth={2}>
@@ -101,6 +102,7 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
                     dataKey="realizado" 
                     position="top" 
                     formatter={(value: number) => value > 0 ? `${value}%` : ''} 
+                    style={{ fontWeight: 'bold', fill: 'black' }}
                  />
               </Line>
             </LineChart>
