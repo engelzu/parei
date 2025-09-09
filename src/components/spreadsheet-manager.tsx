@@ -115,6 +115,9 @@ const reorderHeaders = (headers: string[]): string[] => {
     if (!newHeaders.includes('DESVIO')) {
       newHeaders.push('DESVIO');
     }
+    if (!newHeaders.includes('STATUS')) {
+      newHeaders.push('STATUS');
+    }
 
     const avancoIndex = newHeaders.indexOf('AVANÇO');
     const nomeTarefaIndex = newHeaders.indexOf('NOME DA TAREFA');
@@ -232,11 +235,11 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
       const endDate = parseDate(row['TÉRMINO DA LINHA DE BASE']);
       
+      let previsto = 0;
       if (startDate && endDate && startDate <= endDate && String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
         const totalDuration = endDate.getTime() - startDate.getTime();
         const elapsedDuration = today.getTime() - startDate.getTime();
         
-        let previsto = 0;
         if (today.getTime() >= endDate.getTime()) {
           previsto = 100;
         } else if (totalDuration > 0) {
@@ -254,6 +257,20 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       } else {
         row['PREVISTO'] = '-';
         row['DESVIO'] = '-';
+      }
+
+      // Calculate STATUS
+      const avancoNum = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
+      if (isFinite(avancoNum)) {
+        if (avancoNum === 100) {
+          row['STATUS'] = 'CONCLUÍDO';
+        } else if (avancoNum > 0) {
+          row['STATUS'] = 'EM ANDAMENTO';
+        } else {
+          row['STATUS'] = 'NÃO INICIADO';
+        }
+      } else {
+        row['STATUS'] = 'NÃO INICIADO';
       }
 
       const order = String(row['ORDEM'] || '');
@@ -349,8 +366,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         if (!dataByArea[area]) {
           dataByArea[area] = { total: 0, count: 0 };
         }
-        dataByArea[area].total += advance;
-        dataByArea[area].count++;
+        if (!isNaN(advance)) {
+            dataByArea[area].total += advance;
+            dataByArea[area].count++;
+        }
       }
     });
 
@@ -381,7 +400,9 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             if (!isNaN(previsto)) {
                 dataByArea[area].totalPrevisto += previsto;
             }
-            dataByArea[area].count++;
+            if(!isNaN(realizado) || !isNaN(previsto)) {
+               dataByArea[area].count++;
+            }
         }
     });
     
@@ -674,6 +695,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                 const desvioValue = parseFloat(String(row.DESVIO).replace('%', ''));
                                 const colorClass = desvioValue < 0 ? 'text-red-500' : desvioValue > 0 ? 'text-green-500' : 'text-gray-500';
                                 cellContent = <span className={cn('font-bold', colorClass)}>{row.DESVIO}</span>;
+                            } else if (header === 'STATUS') {
+                                const status = String(row.STATUS);
+                                const colorClass = status === 'CONCLUÍDO' ? 'text-green-500' : status === 'EM ANDAMENTO' ? 'text-blue-500' : 'text-gray-500';
+                                cellContent = <span className={cn('font-bold', colorClass)}>{status}</span>;
                             } else {
                                 cellContent = String(row[header] || '-');
                             }
