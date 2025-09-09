@@ -870,7 +870,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         return (
           <>
             <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-              <div className="h-[70vh] overflow-auto">
+              <div className="h-[65vh] overflow-auto">
                 <Table className="relative min-w-full text-xs">
                   <TableHeader className="sticky top-0 z-10 bg-primary">
                     <TableRow className="border-b-0 hover:bg-primary/90">
