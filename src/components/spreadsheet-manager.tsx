@@ -64,6 +64,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from "@/hooks/use-toast";
 import { saveDataToSheet, saveSingleRow } from '@/app/actions';
 import type { SheetRow, Project } from '@/lib/types';
@@ -228,20 +229,19 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [isLoadingProject, setIsLoadingProject] = useState(true);
   
   const [projectToLoad, setProjectToLoad] = useState<Project | null>(null);
+  const [progress, setProgress] = useState(0);
   
   useEffect(() => {
-    // Only turn off loading when the component has mounted and the data passed
-    // from the server matches the project ID in the URL.
-    // This prevents the UI from being usable before the new project's data has been rendered.
-    const sheetIdFromUrl = searchParams.get('sheetId');
-    if (isLoadingProject && sheetIdFromUrl === currentSheetId) {
+     // This effect ensures we only show the content when the client-side
+     // state has been synchronized with the server-rendered data.
+    if (isLoadingProject && searchParams.get('sheetId') === currentSheetId) {
         setIsLoadingProject(false);
     }
   }, [currentSheetId, searchParams, isLoadingProject]);
 
 
   const currentProject = useMemo(() => {
-    return availableProjects.find(p => p.id === currentSheetId) || defaultProjects[0];
+    return availableProjects.find(p => p.id === currentSheetId) || null;
   }, [availableProjects, currentSheetId]);
 
 
@@ -296,9 +296,17 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     if (projectId === currentSheetId) return;
     const selectedProject = availableProjects.find(p => p.id === projectId);
     if (selectedProject) {
+        setProgress(0);
         setProjectToLoad(selectedProject);
     }
   };
+  
+  useEffect(() => {
+    if (projectToLoad) {
+        const timer = setTimeout(() => setProgress(100), 500);
+        return () => clearTimeout(timer);
+    }
+  }, [projectToLoad]);
 
   const confirmProjectChange = () => {
     if (projectToLoad) {
@@ -1459,12 +1467,19 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             <AlertDialogContent>
                 <AlertDialogHeader>
                 <AlertDialogTitle>Seu projeto agora é:</AlertDialogTitle>
-                <AlertDialogDescription className="text-primary font-bold text-lg pt-2">
+                 <AlertDialogDescription className="text-primary font-bold text-lg pt-2">
                     {projectToLoad?.name}
                 </AlertDialogDescription>
                 </AlertDialogHeader>
+                <div className="space-y-2">
+                    <Progress value={progress} className="w-full" />
+                    <p className="text-xs text-muted-foreground text-center">Preparando para carregar os novos dados...</p>
+                </div>
                 <AlertDialogFooter>
-                <AlertDialogAction onClick={confirmProjectChange}>Confirmar</AlertDialogAction>
+                    <AlertDialogAction onClick={confirmProjectChange} disabled={progress < 100}>
+                        {progress < 100 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Confirmar
+                    </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
