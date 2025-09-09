@@ -108,24 +108,35 @@ function parseDate(value: any): Date | null {
 }
 
 const reorderHeaders = (headers: string[]): string[] => {
-    const newHeaders = [...headers];
-    if (!newHeaders.includes('PREVISTO')) {
-      newHeaders.push('PREVISTO');
-    }
-    if (!newHeaders.includes('DESVIO')) {
-      newHeaders.push('DESVIO');
-    }
-    if (!newHeaders.includes('STATUS')) {
-      newHeaders.push('STATUS');
-    }
+    let newHeaders = [...headers];
 
-    const avancoIndex = newHeaders.indexOf('AVANÇO');
+    // Ensure special columns exist
+    if (!newHeaders.includes('STATUS')) newHeaders.push('STATUS');
+    if (!newHeaders.includes('PREVISTO')) newHeaders.push('PREVISTO');
+    if (!newHeaders.includes('DESVIO')) newHeaders.push('DESVIO');
+    
+    // Remove from current positions to re-insert later
+    const columnsToMove = ['AVANÇO', 'STATUS', 'PREVISTO', 'DESVIO'];
+    newHeaders = newHeaders.filter(h => !columnsToMove.includes(h));
+
+    // Find insertion point
     const nomeTarefaIndex = newHeaders.indexOf('NOME DA TAREFA');
-
-    if (avancoIndex !== -1 && nomeTarefaIndex !== -1 && avancoIndex !== nomeTarefaIndex + 1) {
-        const [avancoHeader] = newHeaders.splice(avancoIndex, 1);
-        newHeaders.splice(nomeTarefaIndex + 1, 0, avancoHeader);
+    
+    if (nomeTarefaIndex !== -1) {
+        // Insert 'AVANÇO' and 'STATUS' after 'NOME DA TAREFA'
+        newHeaders.splice(nomeTarefaIndex + 1, 0, 'AVANÇO', 'STATUS');
+    } else {
+        // Fallback: add to the end if 'NOME DA TAREFA' is not found
+        newHeaders.push('AVANÇO', 'STATUS');
     }
+    
+    const terminoPrevistoIndex = newHeaders.indexOf('TÉRMINO PREVISTO');
+    if(terminoPrevistoIndex !== -1) {
+        newHeaders.splice(terminoPrevistoIndex + 1, 0, 'PREVISTO', 'DESVIO');
+    } else {
+        newHeaders.push('PREVISTO', 'DESVIO');
+    }
+
     return newHeaders;
 };
 
@@ -236,16 +247,17 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       const endDate = parseDate(row['TÉRMINO DA LINHA DE BASE']);
       
       let previsto = 0;
-      if (startDate && endDate && startDate <= endDate && String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
-        const totalDuration = endDate.getTime() - startDate.getTime();
-        
+      if (startDate && endDate && String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
         if (today.getTime() >= endDate.getTime()) {
           previsto = 100;
-        } else if (totalDuration > 0) {
-          const elapsedDuration = today.getTime() - startDate.getTime();
-          previsto = Math.max(0, Math.min(100, (elapsedDuration / totalDuration) * 100));
-        } else if (today.getTime() >= startDate.getTime()) {
-            previsto = 100;
+        } else {
+            const totalDuration = endDate.getTime() - startDate.getTime();
+            if (totalDuration > 0) {
+                const elapsedDuration = today.getTime() - startDate.getTime();
+                previsto = Math.max(0, Math.min(100, (elapsedDuration / totalDuration) * 100));
+            } else if (today.getTime() >= startDate.getTime()) {
+                previsto = 100;
+            }
         }
 
         row['PREVISTO'] = `${Math.round(previsto)}%`;
