@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useTransition, type FC, useCallback } from 'react';
@@ -368,7 +369,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     const selectedUpdater = activeFilters['ATUALIZADOR 1(EMAIL)']?.[0];
     if (!selectedUpdater || selectedUpdater === 'all') return null;
 
-    const updaterTasks = initialData.filter(
+    const updaterTasks = processedData.filter(
       (row) =>
         String(row['ATUALIZADOR 1(EMAIL)']) === selectedUpdater &&
         String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não'
@@ -382,7 +383,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     }, 0);
 
     return Math.round(totalAdvance / updaterTasks.length);
-  }, [activeFilters, initialData]);
+  }, [activeFilters, processedData]);
 
   const barChartData = useMemo<ChartData[]>(() => {
     const dataByArea: Record<string, { [key: string]: number, 'CON': number, 'AND': number, 'NI': number }> = {};
@@ -476,7 +477,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     setCurrentPage(1);
   };
 
- const triggerSave = useCallback((dataToSave: SheetRow[]) => {
+  const triggerSave = useCallback((dataToSave: SheetRow[]) => {
     startSaving(async () => {
       const result = await saveDataToSheet(headers, dataToSave);
       if (result.success) {
@@ -495,18 +496,20 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     });
   }, [headers, toast]);
 
-  const handleAdvanceChange = (id: number, increment: boolean) => {
-    const updatedData = allData.map(row => {
-      if (row.id === id) {
-        const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
-        const newValue = increment ? Math.min(100, current + 5) : Math.max(0, current - 5);
-        return { ...row, 'AVANÇO': `${newValue}%` };
-      }
-      return row;
-    });
 
-    setAllData(updatedData);
-    triggerSave(updatedData);
+  const handleAdvanceChange = (id: number, increment: boolean) => {
+    setAllData(currentAllData => {
+      const updatedData = currentAllData.map(row => {
+        if (row.id === id) {
+          const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
+          const newValue = increment ? Math.min(100, current + 5) : Math.max(0, current - 5);
+          return { ...row, 'AVANÇO': `${newValue}%` };
+        }
+        return row;
+      });
+      triggerSave(updatedData);
+      return updatedData;
+    });
   };
 
   const handleOrderClick = (order: string) => {
