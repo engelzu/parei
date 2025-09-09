@@ -885,7 +885,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                         <TableRow 
                           key={row.id}
                            className={cn('bg-card', {
-                            'font-bold italic text-white bg-green-500': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
+                            'font-bold italic text-white bg-green-500 hover:bg-green-500/90': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
                           })}
                         >
                           {visibleHeaders.map(header => {
