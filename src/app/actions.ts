@@ -23,7 +23,7 @@ export async function saveDataToSheet(headers: string[], allData: SheetRow[], up
 
     // Prepare only the data needed for the log
     const logData = updatedRows.map(row => ({
-      'ID': row['ID'],
+      'ID': row['id'],
       'AVANÇO': String(row['AVANÇO'] || '0').replace('%', ''),
     }));
 
