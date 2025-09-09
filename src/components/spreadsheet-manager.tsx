@@ -848,9 +848,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   };
 
   const handleDownloadTemplate = () => {
-    // Substitua este link pelo link da sua planilha modelo.
-    // Lembre-se de trocar o final do link de "/edit" para "/copy"
-    const templateLink = "https://docs.google.com/spreadsheets/d/1hs8LtsybSCLIsfO-4G-EtZpBrIzf339PeuhdjOU5UeI/copy";
+    const templateLink = "https://docs.google.com/spreadsheets/d/1ZiwhG9yHXxHh3AgVquWahV9CGKuCgTieIQBEfK5LmzI/copy";
     window.open(templateLink, '_blank');
      toast({
       title: "Copiando Template...",
