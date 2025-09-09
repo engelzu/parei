@@ -86,7 +86,7 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
-              <YAxis domain={[0, dataMax => (Math.max(dataMax, 100) + 10)]} unit="%" />
+              <YAxis domain={[0, 100]} unit="%" />
               <Tooltip
                 formatter={(value: number) => `${value.toFixed(0)}%`}
                 labelFormatter={(label) => {
