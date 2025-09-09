@@ -705,8 +705,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                       paginatedData.map(row => (
                         <TableRow 
                           key={row.id}
-                          className={cn('bg-card', {
-                            'font-bold italic text-primary': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
+                           className={cn('bg-card', {
+                            'font-bold italic text-primary bg-primary/20': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
                           })}
                         >
                           {visibleHeaders.map(header => {
