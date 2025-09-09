@@ -847,50 +847,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     XLSX.writeFile(workbook, "dados_exportados.xlsx");
   };
 
-  const handleDownloadTemplate = async () => {
-    const XLSX = await import('xlsx');
-    
-    // Define the standard headers for the template
-    const templateHeaders = [
-      "ID", "AVANÇO", "STATUS", "ORDEM", "ID Exclusiva", "CENTRO DE TRABALHO", 
-      "LOCAL DA INSTALAÇÃO(TAG)", "DESCRIÇÃO LOCAL DA INSTALAÇÃO", "NOME DA TAREFA", 
-      "DURAÇÃO", "INÍCIO", "TÉRMINO", "RESPONSÁVEL", "PREDECESSORAS", "SUCESSORAS", 
-      "CALENDÁRIO DA TAREFA", "NOME DOS RECURSOS", "MODO", "RESUMO(SIM/NÃO)", "TIPO", 
-      "TIPO DE RESTRIÇÃO", "INÍCIO DA LINHA DE BASE", "TÉRMINO DA LINHA DE BASE", 
-      "TRABALHO", "QUANTIDADE DE RECURSOS", "DISCIPLINA", "ÁREA", "SUBAREA", 
-      "ATUALIZADOR 1(EMAIL)", "ATUALIZADOR 2 (EMAIL)", "ATUALIZADOR 3 (EMAIL)", 
-      "ATUALIZADOR 4(EMAIL)", "ATUALIZADOR 5 (EMAIL)", "CURVA ESCOPO GERAL", 
-      "CURVA ANDAIME", "CURVA ESPECIAL", "CURVA PROJETO", "CAMINHO CRÍTICO(SIM/NÃO)", 
-      "TIPO DE PARADA (PP,PE,PG)"
-    ];
-    
-    // Define one row of example data
-    const exampleData = [{
-      "ORDEM": "OS-12345",
-      "NOME DA TAREFA": "Inspecionar Motor Principal",
-      "INÍCIO DA LINHA DE BASE": "01/08/2024",
-      "TÉRMINO DA LINHA DE BASE": "02/08/2024",
-      "DURAÇÃO": "2d",
-      "TRABALHO": "16h",
-      "TIPO": "Atividade",
-      "CAMINHO CRÍTICO(SIM/NÃO)": "Sim",
-      "RESUMO(SIM/NÃO)": "Não",
-      "ÁREA": "MECÂNICA",
-      "DISCIPLINA": "Mecânica",
-      "LOCAL DA INSTALAÇÃO(TAG)": "MOT-01A",
-      "RESPONSÁVEL": "João Silva",
-      "ATUALIZADOR 1(EMAIL)": "joao.silva@email.com",
-      "AVANÇO": "0%",
-      "STATUS": "NI",
-    }];
-
-    const worksheet = XLSX.utils.json_to_sheet(exampleData, { header: templateHeaders });
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
-    XLSX.writeFile(workbook, "template_parei.xlsx");
+  const handleDownloadTemplate = () => {
+    // Substitua este link pelo link da sua planilha modelo.
+    // Lembre-se de trocar o final do link de "/edit" para "/copy"
+    const templateLink = "https://docs.google.com/spreadsheets/d/1hs8LtsybSCLIsfO-4G-EtZpBrIzf339PeuhdjOU5UeI/copy";
+    window.open(templateLink, '_blank');
      toast({
-      title: "Template baixado!",
-      description: "O arquivo 'template_parei.xlsx' foi salvo.",
+      title: "Copiando Template...",
+      description: "Uma nova aba será aberta para você fazer uma cópia da planilha modelo.",
     });
   };
   
