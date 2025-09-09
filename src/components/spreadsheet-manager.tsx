@@ -498,18 +498,16 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
 
   const handleAdvanceChange = (id: number, increment: boolean) => {
-    setAllData(currentAllData => {
-      const updatedData = currentAllData.map(row => {
-        if (row.id === id) {
-          const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
-          const newValue = increment ? Math.min(100, current + 5) : Math.max(0, current - 5);
-          return { ...row, 'AVANÇO': `${newValue}%` };
-        }
-        return row;
-      });
-      triggerSave(updatedData);
-      return updatedData;
+    const updatedData = allData.map(row => {
+      if (row.id === id) {
+        const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
+        const newValue = increment ? Math.min(100, current + 5) : Math.max(0, current - 5);
+        return { ...row, 'AVANÇO': `${newValue}%` };
+      }
+      return row;
     });
+    setAllData(updatedData);
+    triggerSave(updatedData);
   };
 
   const handleOrderClick = (order: string) => {
