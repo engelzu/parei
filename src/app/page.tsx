@@ -1,13 +1,23 @@
 
 import { SpreadsheetManager } from '@/components/spreadsheet-manager';
-import type { SheetRow } from '@/lib/types';
+import type { SheetRow, Project } from '@/lib/types';
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwVAMAIp7RbVAzb3YGkIZq8Kr_HBEfFnx1iBa_981c4kb0bdmAJJAEhbHGZBPwwe1Hdpg/exec';
-const SHEET_ID = '1hs8LtsybSCLIsfO-4G-EtZpBrIzf339PeuhdjOU5UeI';
 
-async function getSheetData() {
+// Lista de projetos disponíveis. Adicione novos projetos aqui.
+const availableProjects: Project[] = [
+  { name: 'PAREI v1.1 - GESTOR DE PARADAS', id: '1hs8LtsybSCLIsfO-4G-EtZpBrIzf339PeuhdjOU5UeI' },
+  // Exemplo de como adicionar outro projeto:
+  // { name: 'Manutenção Preventiva 2025', id: 'SEU_OUTRO_SHEET_ID_AQUI' },
+];
+
+
+async function getSheetData(sheetId: string) {
+  if (!sheetId) {
+    return { headers: [], data: [], error: "ID da planilha não fornecido." };
+  }
   try {
-    const url = `${APPS_SCRIPT_URL}?action=getData&sheetId=${SHEET_ID}`;
+    const url = `${APPS_SCRIPT_URL}?action=getData&sheetId=${sheetId}`;
     // Use revalidation to avoid hitting the API too often.
     const response = await fetch(url, { next: { revalidate: 60 } });
     if (!response.ok) {
@@ -36,9 +46,10 @@ async function getSheetData() {
   }
 }
 
-async function getLogData() {
+async function getLogData(sheetId: string) {
+    if (!sheetId) return [];
     try {
-        const url = `${APPS_SCRIPT_URL}?action=getLogData&sheetId=${SHEET_ID}`;
+        const url = `${APPS_SCRIPT_URL}?action=getLogData&sheetId=${sheetId}`;
 
         const response = await fetch(url, {
             method: 'GET',
@@ -81,9 +92,13 @@ async function getLogData() {
 }
 
 
-export default async function Home() {
-  const { headers, data, error } = await getSheetData();
-  const logData = await getLogData();
+export default async function Home({ searchParams }: { searchParams?: { [key: string]: string | undefined } }) {
+  const selectedProjectName = searchParams?.projeto;
+  const currentProject = availableProjects.find(p => p.name === selectedProjectName) || availableProjects[0];
+  const currentSheetId = currentProject.id;
+  
+  const { headers, data, error } = await getSheetData(currentSheetId);
+  const logData = await getLogData(currentSheetId);
 
   return (
     <main className="bg-transparent min-h-screen">
@@ -93,6 +108,8 @@ export default async function Home() {
           initialHeaders={headers} 
           initialError={error}
           initialLogData={logData}
+          availableProjects={availableProjects}
+          currentProject={currentProject}
         />
       </div>
     </main>

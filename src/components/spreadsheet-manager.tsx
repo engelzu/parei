@@ -3,6 +3,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useTransition, type FC, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -50,7 +51,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { saveDataToSheet, saveSingleRow } from '@/app/actions';
-import type { SheetRow } from '@/lib/types';
+import type { SheetRow, Project } from '@/lib/types';
 import {
   RotateCw,
   Filter,
@@ -83,6 +84,8 @@ interface SpreadsheetManagerProps {
   initialHeaders: string[];
   initialError: string | null;
   initialLogData?: any[];
+  availableProjects: Project[];
+  currentProject: Project;
 }
 
 const ROWS_PER_PAGE = 15;
@@ -168,6 +171,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   initialHeaders,
   initialError,
   initialLogData = [],
+  availableProjects,
+  currentProject,
 }) => {
   const [allData, setAllData] = useState<SheetRow[]>(initialData);
   const [headers] = useState<string[]>(() => reorderHeaders(initialHeaders));
@@ -190,6 +195,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [updatedRows, setUpdatedRows] = useState<SheetRow[]>([]);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const router = useRouter();
 
 
   useEffect(() => {
@@ -402,26 +408,26 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const dataByArea: Record<string, { 'CON': number, 'AND': number, 'NI': number, 'ATR': number }> = {};
+    const dataByArea: Record<string, { 'CONCLUÍDO': number, 'EM ANDAMENTO': number, 'NÃO INICIADO': number, 'ATRASADA': number }> = {};
 
     filteredData.forEach(row => {
         const area = String(row['ÁREA'] || 'N/A');
         if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
             if (!dataByArea[area]) {
-                dataByArea[area] = { 'CON': 0, 'AND': 0, 'NI': 0, 'ATR': 0 };
+                dataByArea[area] = { 'CONCLUÍDO': 0, 'EM ANDAMENTO': 0, 'NÃO INICIADO': 0, 'ATRASADA': 0 };
             }
 
             const avancoNum = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
-            const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
-
+            
             if (avancoNum === 100) {
-                dataByArea[area]['CON']++;
+                dataByArea[area]['CONCLUÍDO']++;
             } else if (avancoNum > 0) {
-                dataByArea[area]['AND']++;
+                dataByArea[area]['EM ANDAMENTO']++;
             } else { // avancoNum is 0 or NaN
-                dataByArea[area]['NI']++;
+                dataByArea[area]['NÃO INICIADO']++;
+                const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
                 if (startDate && startDate.getTime() < today.getTime()) {
-                    dataByArea[area]['ATR']++;
+                    dataByArea[area]['ATRASADA']++;
                 }
             }
         }
@@ -430,10 +436,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     return Object.keys(dataByArea)
       .map(area => ({
         area,
-        'CONCLUÍDO': dataByArea[area]['CON'],
-        'EM ANDAMENTO': dataByArea[area]['AND'],
-        'NÃO INICIADO': dataByArea[area]['NI'],
-        'ATRASADA': dataByArea[area]['ATR'],
+        'CONCLUÍDO': dataByArea[area]['CONCLUÍDO'],
+        'EM ANDAMENTO': dataByArea[area]['EM ANDAMENTO'],
+        'NÃO INICIADO': dataByArea[area]['NÃO INICIADO'] - dataByArea[area]['ATRASADA'], // Subtrai as atrasadas das não iniciadas
+        'ATRASADA': dataByArea[area]['ATRASADA'],
       }))
       .sort((a, b) => a.area.localeCompare(b.area));
   }, [filteredData]);
@@ -527,93 +533,97 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   }, [filteredData]);
   
   const { dailyLogChartData, dailyLogChartKeys } = useMemo(() => {
-    if (!initialLogData || initialLogData.length === 0 || initialData.length === 0) {
-        return { dailyLogChartData: [], dailyLogChartKeys: [] };
-    }
+      if (!initialLogData || initialLogData.length === 0 || initialData.length === 0) {
+          return { dailyLogChartData: [], dailyLogChartKeys: [] };
+      }
 
-    // 1. Create a map of task ID to its area for all non-summary tasks
-    const taskToAreaMap = initialData.reduce((acc, row) => {
-        if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não' && row.id) {
-            acc[String(row.id)] = String(row['ÁREA'] || 'N/A');
-        }
-        return acc;
-    }, {} as Record<string, string>);
+      // 1. Map tasks to their areas
+      const taskToAreaMap = initialData.reduce((acc, row) => {
+          if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não' && row.id) {
+              acc[String(row.id)] = String(row['ÁREA'] || 'N/A');
+          }
+          return acc;
+      }, {} as Record<string, string>);
+      const allAreas = Array.from(new Set(Object.values(taskToAreaMap))).sort();
 
-    const allAreas = Array.from(new Set(Object.values(taskToAreaMap))).sort();
+      // 2. Group logs by date
+      const logsByDate: Record<string, { taskId: string; progress: number }[]> = {};
+      initialLogData.forEach(log => {
+          const taskId = String(log.ID_TAREFA);
+          if (taskToAreaMap[taskId]) {
+              try {
+                  const timestamp = new Date(log.TIMESTAMP);
+                  if (isNaN(timestamp.getTime())) return;
+                  
+                  const date = new Date(timestamp.getFullYear(), timestamp.getMonth(), timestamp.getDate());
+                  const dateStr = date.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' });
+                  
+                  if (!logsByDate[dateStr]) {
+                      logsByDate[dateStr] = [];
+                  }
+                  logsByDate[dateStr].push({
+                      taskId,
+                      progress: parseFloat(String(log.AVANCO_PERCENTUAL)),
+                  });
+              } catch (e) { /* Ignore malformed logs */ }
+          }
+      });
+      
+      // 3. Get sorted list of dates with logs
+      const sortedDates = Object.keys(logsByDate).sort((a, b) => {
+          const [dayA, monthA, yearA] = a.split('/');
+          const [dayB, monthB, yearB] = b.split('/');
+          return new Date(`20${yearA}-${monthA}-${dayA}`).getTime() - new Date(`20${yearB}-${monthB}-${dayB}`).getTime();
+      });
 
-    // 2. Group logs by date, ensuring we only consider tasks with a mapped area
-    const logsByDate: Record<string, { taskId: string; progress: number }[]> = {};
-    initialLogData.forEach(log => {
-        const taskId = String(log.ID_TAREFA);
-        if (taskToAreaMap[taskId]) { // Only process logs for relevant tasks
-            try {
-                const timestamp = new Date(log.TIMESTAMP);
-                if (isNaN(timestamp.getTime())) return;
-                const dateStr = timestamp.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' });
-                if (!logsByDate[dateStr]) {
-                    logsByDate[dateStr] = [];
-                }
-                logsByDate[dateStr].push({
-                    taskId,
-                    progress: parseFloat(String(log.AVANCO_PERCENTUAL)),
-                });
-            } catch (e) { /* Ignore malformed logs */ }
-        }
-    });
+      if (sortedDates.length === 0) {
+          return { dailyLogChartData: [], dailyLogChartKeys: [] };
+      }
 
-    // 3. Get sorted list of dates with logs
-    const sortedDates = Object.keys(logsByDate).sort((a, b) => {
-        const [dayA, monthA, yearA] = a.split('/');
-        const [dayB, monthB, yearB] = b.split('/');
-        return new Date(`20${yearA}-${monthA}-${dayA}`).getTime() - new Date(`20${yearB}-${monthB}-${dayB}`).getTime();
-    });
+      // 4. Build cumulative progress state day by day
+      const dailyStates: DailyProgressChartData[] = [];
+      const currentTaskProgress: Record<string, number> = {};
+      
+      // Initialize all tasks with 0 progress
+      Object.keys(taskToAreaMap).forEach(taskId => {
+          currentTaskProgress[taskId] = 0;
+      });
 
-    if (sortedDates.length === 0) {
-        return { dailyLogChartData: [], dailyLogChartKeys: [] };
-    }
+      for (const date of sortedDates) {
+          const todaysLogs = logsByDate[date] || [];
+          
+          // Update the progress state with the latest log for each task on this day
+          todaysLogs.forEach(log => {
+              if (typeof log.progress === 'number' && !isNaN(log.progress)) {
+                  currentTaskProgress[log.taskId] = log.progress;
+              }
+          });
 
-    // 4. Iterate through dates, building a cumulative state of progress
-    const dailyStates: DailyProgressChartData[] = [];
-    // Initialize currentTaskProgress with 0 for all tasks
-    const currentTaskProgress: Record<string, number> = {};
-    Object.keys(taskToAreaMap).forEach(taskId => {
-        currentTaskProgress[taskId] = 0;
-    });
+          // Calculate the average progress for each area based on the *current cumulative state*
+          const progressByArea: Record<string, { total: number; count: number }> = {};
+          allAreas.forEach(area => {
+              progressByArea[area] = { total: 0, count: 0 };
+          });
 
-    for (const date of sortedDates) {
-        const todaysLogs = logsByDate[date] || [];
-        // Update the progress state with the latest log for each task on this day
-        todaysLogs.forEach(log => {
-            if (typeof log.progress === 'number' && !isNaN(log.progress)) {
-                currentTaskProgress[log.taskId] = log.progress;
-            }
-        });
-
-        // Calculate the average progress for each area based on the current state
-        const progressByArea: Record<string, { total: number; count: number }> = {};
-        allAreas.forEach(area => {
-            progressByArea[area] = { total: 0, count: 0 };
-        });
-
-        Object.keys(currentTaskProgress).forEach(taskId => {
-            const area = taskToAreaMap[taskId];
-            if (area) { // Area will always exist due to the initial filter
-                progressByArea[area].total += currentTaskProgress[taskId];
-                progressByArea[area].count++;
-            }
-        });
-        
-        // Create the chart entry for the current date
-        const chartEntry: DailyProgressChartData = { date };
-        allAreas.forEach(area => {
-            const areaData = progressByArea[area];
-            chartEntry[area] = areaData.count > 0 ? Math.round(areaData.total / areaData.count) : 0;
-        });
-        dailyStates.push(chartEntry);
-    }
-    
-    return { dailyLogChartData: dailyStates, dailyLogChartKeys: allAreas };
-}, [initialLogData, initialData]);
+          Object.keys(currentTaskProgress).forEach(taskId => {
+              const area = taskToAreaMap[taskId];
+              if (area) { 
+                  progressByArea[area].total += currentTaskProgress[taskId];
+                  progressByArea[area].count++;
+              }
+          });
+          
+          // Create the chart entry for the current date
+          const chartEntry: DailyProgressChartData = { date };
+          allAreas.forEach(area => {
+              const areaData = progressByArea[area];
+              chartEntry[area] = areaData.count > 0 ? Math.round(areaData.total / areaData.count) : 0;
+          });
+          dailyStates.push(chartEntry);
+      }
+      
+      return { dailyLogChartData: dailyStates, dailyLogChartKeys: allAreas };
+  }, [initialLogData, initialData]);
 
 
   const selectedOrderTasks = useMemo(() => {
@@ -638,6 +648,15 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     }));
     setCurrentPage(1);
   };
+  
+  const handleProjectChange = (projectName: string) => {
+    const selectedProject = availableProjects.find(p => p.name === projectName);
+    if (selectedProject) {
+        // Use window.location to ensure a full page reload with new data
+        window.location.href = `/?projeto=${encodeURIComponent(selectedProject.name)}`;
+    }
+  };
+
 
   const handleAdvanceChange = (id: number, increment: boolean) => {
     let updatedRow: SheetRow | undefined;
@@ -661,7 +680,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     if (updatedRow) {
         setIsAutoSaving(true);
         startSaving(async () => {
-            const result = await saveSingleRow(updatedRow!);
+            const result = await saveSingleRow(currentProject.id, updatedRow!);
             if (!result.success) {
                 toast({
                     variant: "destructive",
@@ -684,7 +703,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const handleManualSave = () => {
     startSaving(async () => {
-        const result = await saveDataToSheet(reorderHeaders(initialHeaders), allData, updatedRows);
+        const result = await saveDataToSheet(currentProject.id, reorderHeaders(initialHeaders), allData, updatedRows);
         if (result.success) {
             setUpdatedRows([]); // Clear updated rows after successful save
             toast({
@@ -864,7 +883,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     return (
       <Card className="border-0 shadow-none sm:border sm:shadow-sm">
         <CardHeader>
-            <CardTitle>PAREI v1.1 - GESTOR DE PARADAS INDUSTRIAIS</CardTitle>
+            <CardTitle>{currentProject?.name || 'PAREI v1.1 - GESTOR DE PARADAS INDUSTRIAIS'}</CardTitle>
         </CardHeader>
         <CardContent>
             <Alert variant="destructive">
@@ -872,6 +891,21 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 <AlertTitle>Erro ao Carregar Dados</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
             </Alert>
+             <div className="mt-4">
+              <Label className="text-xs font-medium text-primary">SELECIONAR PROJETO</Label>
+               <Select onValueChange={handleProjectChange} defaultValue={currentProject?.name}>
+                <SelectTrigger className="w-full mt-1 h-9 rounded-md">
+                    <SelectValue placeholder="Selecione um projeto" />
+                </SelectTrigger>
+                <SelectContent>
+                    {availableProjects.map((proj) => (
+                    <SelectItem key={proj.id} value={proj.name}>
+                        {proj.name}
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+            </div>
         </CardContent>
       </Card>
     );
@@ -1120,7 +1154,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       <CardHeader>
         <div className="flex flex-col items-center gap-4">
             <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-2">
-                <CardTitle className="text-2xl font-bold text-primary text-center">PAREI v1.1 - GESTOR DE PARADAS INDUSTRIAIS</CardTitle>
+                <CardTitle className="text-2xl font-bold text-primary text-center">{currentProject.name}</CardTitle>
                 <CardDescription className="text-primary/70 text-sm">
                     {lastUpdated ? `Última atualização: ${lastUpdated}` : 'Carregando...'}
                 </CardDescription>
@@ -1188,6 +1222,21 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         </div>
       </CardHeader>
       <CardContent>
+        <div className="mb-4">
+            <Label className="text-xs font-medium text-primary">SELECIONAR PROJETO</Label>
+            <Select onValueChange={handleProjectChange} defaultValue={currentProject.name}>
+            <SelectTrigger className="w-full md:w-1/3 lg:w-1/4 mt-1 h-9 rounded-md">
+                <SelectValue placeholder="Selecione um projeto" />
+            </SelectTrigger>
+            <SelectContent>
+                {availableProjects.map((proj) => (
+                <SelectItem key={proj.id} value={proj.name}>
+                    {proj.name}
+                </SelectItem>
+                ))}
+            </SelectContent>
+            </Select>
+        </div>
         <div className="md:hidden mb-4">
               <Sheet open={isMobileFilterOpen} onOpenChange={setMobileFilterOpen}>
                 <SheetTrigger asChild>
