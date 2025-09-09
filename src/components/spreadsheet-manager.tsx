@@ -179,7 +179,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const { toast } = useToast();
   const [currentView, setCurrentView] = useState<'table' | 'bar-chart' | 'line-chart'>('table');
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
-
+  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setLastUpdated(new Date().toLocaleString('pt-BR'));
@@ -477,7 +477,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     setCurrentPage(1);
   };
 
-  const triggerSave = useCallback((dataToSave: SheetRow[]) => {
+ const triggerSave = useCallback((dataToSave: SheetRow[]) => {
     startSaving(async () => {
       const result = await saveDataToSheet(headers, dataToSave);
       if (result.success) {
@@ -497,6 +497,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   }, [headers, toast]);
 
   const handleAdvanceChange = (id: number, increment: boolean) => {
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+
     const updatedData = allData.map(row => {
       if (row.id === id) {
         const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
@@ -505,8 +509,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       }
       return row;
     });
+
     setAllData(updatedData);
-    triggerSave(updatedData);
+
+    const newTimeout = setTimeout(() => {
+      triggerSave(updatedData);
+    }, 2000); // Salva 2 segundos após a última alteração
+
+    setSaveTimeout(newTimeout);
   };
 
   const handleOrderClick = (order: string) => {
