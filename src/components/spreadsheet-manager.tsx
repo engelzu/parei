@@ -362,7 +362,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       .sort((a, b) => b.avanco - a.avanco);
   }, [filteredData]);
 
-  const lineChartData = useMemo<LineChartData[]>(() => {
+  const lineChartDataByArea = useMemo<Record<string, LineChartData[]>>(() => {
     const dataByArea: Record<string, { totalRealizado: number; totalPrevisto: number; count: number }> = {};
 
     filteredData.forEach(row => {
@@ -384,14 +384,17 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             dataByArea[area].count++;
         }
     });
+    
+    const chartData: Record<string, LineChartData[]> = {};
+    for (const area in dataByArea) {
+      chartData[area] = [{
+        name: area,
+        realizado: dataByArea[area].count > 0 ? Math.round(dataByArea[area].totalRealizado / dataByArea[area].count) : 0,
+        previsto: dataByArea[area].count > 0 ? Math.round(dataByArea[area].totalPrevisto / dataByArea[area].count) : 0,
+      }];
+    }
 
-    return Object.keys(dataByArea)
-        .map(area => ({
-            area,
-            realizado: dataByArea[area].count > 0 ? Math.round(dataByArea[area].totalRealizado / dataByArea[area].count) : 0,
-            previsto: dataByArea[area].count > 0 ? Math.round(dataByArea[area].totalPrevisto / dataByArea[area].count) : 0,
-        }))
-        .sort((a, b) => a.area.localeCompare(b.area));
+    return chartData;
   }, [filteredData]);
 
   const totalPages = Math.ceil(filteredData.length / ROWS_PER_PAGE);
@@ -729,7 +732,19 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       case 'bar-chart':
         return <ProgressChart data={barChartData} />;
       case 'line-chart':
-        return <PlannedRealizedChart data={lineChartData} />;
+          return (
+            <ScrollArea className="h-[70vh] w-full">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {Object.keys(lineChartDataByArea).sort().map(area => (
+                  <PlannedRealizedChart 
+                    key={area} 
+                    data={lineChartDataByArea[area]} 
+                    area={area}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          );
       default:
         return null;
     }

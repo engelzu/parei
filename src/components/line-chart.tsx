@@ -1,8 +1,8 @@
 "use client"
 
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -19,27 +19,28 @@ import {
 } from '@/components/ui/card';
 
 export interface LineChartData {
-  area: string
+  name: string
   previsto: number
   realizado: number
 }
 
 interface PlannedRealizedChartProps {
   data: LineChartData[]
+  area: string
 }
 
-export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data }) => {
+export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data, area }) => {
   if (!data || data.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Gráfico Previsto vs. Realizado por Área</CardTitle>
+          <CardTitle>Curva S - {area}</CardTitle>
           <CardDescription>
-            Não há dados suficientes para exibir o gráfico.
+            Não há dados suficientes para exibir o gráfico para esta área.
           </CardDescription>
         </CardHeader>
-        <CardContent className="h-96 flex items-center justify-center">
-            <p className="text-muted-foreground">Tente limpar os filtros para ver mais resultados.</p>
+        <CardContent className="h-80 flex items-center justify-center">
+            <p className="text-muted-foreground">Sem tarefas de execução para esta área.</p>
         </CardContent>
       </Card>
     )
@@ -48,33 +49,34 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
   return (
     <Card className="bg-card">
       <CardHeader>
-        <CardTitle>Curva S - Previsto vs. Realizado por Área</CardTitle>
+        <CardTitle>Curva S - {area}</CardTitle>
         <CardDescription>
-          Média de avanço previsto e realizado para cada área de atuação.
+          Média de avanço previsto e realizado para a área.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[60vh] w-full">
+        <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart
+            <BarChart
               data={data}
-              margin={{
+              layout="vertical"
+               margin={{
                 top: 5,
-                right: 30,
+                right: 50,
                 left: 20,
                 bottom: 5,
               }}
             >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="area" angle={-45} textAnchor="end" height={80} interval={0} />
-              <YAxis domain={[0, 100]} unit="%" />
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+              <XAxis type="number" dataKey="value" domain={[0, 100]} unit="%" />
+              <YAxis type="category" dataKey="name" hide={true} />
               <Tooltip
-                formatter={(value: number, name: string) => [`${value}%`, name === 'realizado' ? 'Realizado' : 'Previsto']}
+                formatter={(value: number) => `${value}%`}
               />
               <Legend />
-              <Line type="monotone" dataKey="previsto" name="Previsto" stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" />
-              <Line type="monotone" dataKey="realizado" name="Realizado" stroke="hsl(var(--primary))" strokeWidth={2} />
-            </LineChart>
+              <Bar dataKey="previsto" name="Previsto" fill="hsl(var(--muted-foreground))" />
+              <Bar dataKey="realizado" name="Realizado" fill="hsl(var(--primary))" />
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </CardContent>
