@@ -405,26 +405,27 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     const dataByArea: Record<string, { 'CON': number, 'AND': number, 'NI': number, 'ATR': number }> = {};
 
     filteredData.forEach(row => {
-      const area = String(row['ÁREA'] || 'N/A');
-      if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
-        if (!dataByArea[area]) {
-          dataByArea[area] = { 'CON': 0, 'AND': 0, 'NI': 0, 'ATR': 0 };
-        }
-        
-        const avancoNum = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
-        const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
-        
-        if (avancoNum === 100) {
-            dataByArea[area]['CON']++;
-        } else if (avancoNum > 0) {
-            dataByArea[area]['AND']++;
-        } else { // avancoNum is 0 or NaN
-            dataByArea[area]['NI']++;
-            if (startDate && startDate.getTime() < today.getTime()) {
-                dataByArea[area]['ATR']++;
+        const area = String(row['ÁREA'] || 'N/A');
+        if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
+            if (!dataByArea[area]) {
+                dataByArea[area] = { 'CON': 0, 'AND': 0, 'NI': 0, 'ATR': 0 };
+            }
+
+            const avancoNum = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
+            const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
+
+            if (avancoNum === 100) {
+                dataByArea[area]['CON']++;
+            } else if (avancoNum > 0) {
+                dataByArea[area]['AND']++;
+            } else { // avancoNum is 0 or NaN, considered "Não Iniciado"
+                dataByArea[area]['NI']++;
+                // A task is "Atrasada" if it's not started (avanço 0) and its start date has passed.
+                if (startDate && startDate.getTime() < today.getTime()) {
+                    dataByArea[area]['ATR']++;
+                }
             }
         }
-      }
     });
 
     return Object.keys(dataByArea)
@@ -532,7 +533,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     }
 
     const taskToAreaMap = initialData.reduce((acc, row) => {
-        if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
+        if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não' && row.id) {
             acc[String(row.id)] = String(row['ÁREA'] || 'N/A');
         }
         return acc;
@@ -566,7 +567,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     const currentTaskProgress: Record<string, number> = {};
 
     initialData.forEach(task => {
-        if (String(task['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
+        if (String(task['RESUMO(SIM/NÃO)']).toLowerCase() === 'não' && task.id) {
             currentTaskProgress[String(task.id)] = 0;
         }
     });
