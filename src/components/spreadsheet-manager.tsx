@@ -706,7 +706,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                         <TableRow 
                           key={row.id}
                           className={cn('bg-card', {
-                            'text-primary font-bold': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
+                            'font-bold italic text-primary': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
                           })}
                         >
                           {visibleHeaders.map(header => {
@@ -976,7 +976,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
         {selectedOrder && (
             <Dialog open={!!selectedOrder} onOpenChange={(isOpen) => !isOpen && setSelectedOrder(null)}>
-                <DialogContent className="sm:max-w-[625px]">
+                <DialogContent className="sm:max-w-[80vw] lg:max-w-[625px]">
                     <DialogHeader>
                         <DialogTitle>Detalhes da Ordem: {selectedOrder}</DialogTitle>
                         <DialogDescription>
@@ -992,10 +992,12 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {selectedOrderTasks.length > 0 ? (
-                                    selectedOrderTasks.map(task => (
+                                {processedData.filter(row => String(row['ORDEM']) === selectedOrder && String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não').length > 0 ? (
+                                    processedData
+                                    .filter(row => String(row['ORDEM']) === selectedOrder && String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não')
+                                    .map(task => (
                                         <TableRow key={task.id}>
-                                            <TableCell className="font-medium">{String(task['NOME DA TAREFA'])}</TableCell>
+                                            <TableCell className="font-medium whitespace-normal">{String(task['NOME DA TAREFA'])}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-0.5">
                                                     <Button 
