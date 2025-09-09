@@ -716,29 +716,35 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                             if (header === 'INÍCIO DA LINHA DE BASE' || header === 'TÉRMINO DA LINHA DE BASE') {
                                 cellContent = formatDateValue(row[header]);
                             } else if (header === 'AVANÇO') {
-                                cellContent = (
-                                  <div className="flex items-center justify-center gap-0.5">
-                                    <Button 
-                                      size="icon" 
-                                      variant="ghost" 
-                                      className="h-5 w-5" 
-                                      onClick={() => handleAdvanceChange(row.id, false)}
-                                      disabled={isSummaryRow}
-                                    >
-                                      <ChevronDown className="h-3 w-3"/>
-                                    </Button>
-                                    <span className={cn("w-8 text-center font-medium", isSummaryRow && "text-lg font-bold")}>{row[header] || '0%'}</span>
-                                    <Button 
-                                      size="icon"
-                                      variant="ghost" 
-                                      className="h-5 w-5" 
-                                      onClick={() => handleAdvanceChange(row.id, true)}
-                                      disabled={isSummaryRow}
-                                    >
-                                      <ChevronUp className="h-3 w-3"/>
-                                    </Button>
-                                  </div>
-                                );
+                                if (isSummaryRow) {
+                                    cellContent = (
+                                        <span className="text-lg font-bold">
+                                            {row[header] || '0%'}
+                                        </span>
+                                    );
+                                } else {
+                                    cellContent = (
+                                      <div className="flex items-center justify-center gap-0.5">
+                                        <Button 
+                                          size="icon" 
+                                          variant="ghost" 
+                                          className="h-5 w-5" 
+                                          onClick={() => handleAdvanceChange(row.id, false)}
+                                        >
+                                          <ChevronDown className="h-3 w-3"/>
+                                        </Button>
+                                        <span className="w-8 text-center font-medium">{row[header] || '0%'}</span>
+                                        <Button 
+                                          size="icon"
+                                          variant="ghost" 
+                                          className="h-5 w-5" 
+                                          onClick={() => handleAdvanceChange(row.id, true)}
+                                        >
+                                          <ChevronUp className="h-3 w-3"/>
+                                        </Button>
+                                      </div>
+                                    );
+                                }
                             } else if (header === 'ORDEM') {
                                 const orderValue = String(row[header] || '-');
                                 cellContent = (
