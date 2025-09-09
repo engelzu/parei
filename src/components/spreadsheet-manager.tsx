@@ -224,6 +224,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   // All project management state is now handled on the client
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
   const [isAddProjectDialogOpen, setAddProjectDialogOpen] = useState(false);
+  const [isLoadingProject, setIsLoadingProject] = useState(false);
   
   const [projectToLoad, setProjectToLoad] = useState<Project | null>(null);
 
@@ -245,7 +246,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     try {
       const storedProjects = localStorage.getItem(PROJECTS_STORAGE_KEY);
       if (storedProjects) {
-        setAvailableProjects(JSON.parse(storedProjects));
+        const parsedProjects = JSON.parse(storedProjects);
+        if (parsedProjects.length > 0) {
+            setAvailableProjects(parsedProjects);
+        } else {
+            // If stored projects is an empty array, initialize with default
+            setAvailableProjects(defaultProjects);
+            localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(defaultProjects));
+        }
       } else {
         // If no projects in storage, initialize with the default
         setAvailableProjects(defaultProjects);
@@ -282,8 +290,9 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const confirmProjectChange = () => {
     if (projectToLoad) {
+      setIsLoadingProject(true); // Start loading overlay
       router.push(`/?sheetId=${encodeURIComponent(projectToLoad.id)}`);
-      setProjectToLoad(null);
+      // No need to setProjectToLoad(null) here because the page will reload.
     }
   };
 
@@ -511,9 +520,11 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
             
             let isDelayed = false;
+            // A task is delayed if it's not 100% complete and today is past the start date
+            // AND its current progress is less than its expected progress (previsto).
             if (avancoNum < 100 && startDate && startDate.getTime() < today.getTime()) {
                 const previsto = parseFloat(String(row['PREVISTO'] || '0').replace('%',''));
-                if(avancoNum < previsto) {
+                if(isFinite(previsto) && avancoNum < previsto) {
                     isDelayed = true;
                 }
             }
@@ -523,29 +534,23 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 dataByArea[area]['CONCLUÍDO']++;
             } else if (avancoNum > 0) {
                 dataByArea[area]['EM ANDAMENTO']++;
-                if (isDelayed) dataByArea[area]['ATRASADA']++;
-
+                if (isDelayed) {
+                    dataByArea[area]['ATRASADA']++;
+                }
             } else { // avancoNum is 0 or NaN
                 dataByArea[area]['NÃO INICIADO']++;
-                if (isDelayed) dataByArea[area]['ATRASADA']++;
+                if (isDelayed) {
+                   dataByArea[area]['ATRASADA']++;
+                }
             }
         }
     });
 
     return Object.keys(dataByArea)
       .map(area => {
-        const totalNaoIniciado = dataByArea[area]['NÃO INICIADO'];
-        const totalEmAndamento = dataByArea[area]['EM ANDAMENTO'];
-        const atrasadas = dataByArea[area]['ATRASADA'];
-
-        // Atrasadas já estão contidas em 'Não Iniciado' ou 'Em Andamento',
-        // então o total para o gráfico empilhado já está correto.
         return {
           area,
-          'CONCLUÍDO': dataByArea[area]['CONCLUÍDO'],
-          'EM ANDAMENTO': totalEmAndamento,
-          'NÃO INICIADO': totalNaoIniciado,
-          'ATRASADA': atrasadas,
+          ...dataByArea[area]
         }
       })
       .sort((a, b) => a.area.localeCompare(b.area));
@@ -640,91 +645,93 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   }, [filteredData]);
   
   const { dailyLogChartData, dailyLogChartKeys } = useMemo(() => {
-      if (!initialLogData || initialLogData.length === 0 || initialData.length === 0) {
-          return { dailyLogChartData: [], dailyLogChartKeys: [] };
+    if (!initialLogData || initialLogData.length === 0 || initialData.length === 0) {
+      return { dailyLogChartData: [], dailyLogChartKeys: [] };
+    }
+
+    // 1. Create a map from task ID to its area
+    const taskToAreaMap: Record<string, string> = {};
+    const allTaskIds = new Set<string>();
+    initialData.forEach(row => {
+      if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não' && row.id) {
+        const taskId = String(row.id);
+        taskToAreaMap[taskId] = String(row['ÁREA'] || 'N/A');
+        allTaskIds.add(taskId);
       }
+    });
+    
+    // 2. Get a sorted list of all unique areas
+    const allAreas = Array.from(new Set(Object.values(taskToAreaMap))).sort();
 
-      const taskToAreaMap: Record<string, string> = initialData.reduce((acc, row) => {
-        if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não' && row.id) {
-          acc[String(row.id)] = String(row['ÁREA'] || 'N/A');
+    // 3. Group logs by date (YYYY-MM-DD format)
+    const logsByDate: Record<string, { taskId: string; progress: number }[]> = {};
+    initialLogData.forEach(log => {
+      const taskId = String(log.ID_TAREFA);
+      if (taskToAreaMap[taskId]) { // Only consider logs for tasks in the main sheet
+        try {
+          const timestamp = new Date(log.TIMESTAMP);
+          if (isNaN(timestamp.getTime())) return;
+          
+          const dateKey = new Date(timestamp.getUTCFullYear(), timestamp.getUTCMonth(), timestamp.getUTCDate()).toISOString().split('T')[0];
+          
+          if (!logsByDate[dateKey]) {
+            logsByDate[dateKey] = [];
+          }
+          logsByDate[dateKey].push({
+            taskId,
+            progress: parseFloat(String(log.AVANCO_PERCENTUAL)),
+          });
+        } catch (e) { /* Ignore malformed logs */ }
+      }
+    });
+    
+    const sortedDates = Object.keys(logsByDate).sort();
+
+    if (sortedDates.length === 0) {
+      return { dailyLogChartData: [], dailyLogChartKeys: [] };
+    }
+
+    // 4. Build the cumulative progress day by day
+    const dailyStates: DailyProgressChartData[] = [];
+    const currentTaskProgress: Record<string, number> = {};
+    allTaskIds.forEach(id => currentTaskProgress[id] = 0); // Initialize all tasks at 0%
+
+    for (const dateKey of sortedDates) {
+      // Update the progress for tasks that have logs for the current day
+      const todaysLogs = logsByDate[dateKey] || [];
+      todaysLogs.forEach(log => {
+        if (typeof log.progress === 'number' && !isNaN(log.progress)) {
+          currentTaskProgress[log.taskId] = log.progress;
         }
-        return acc;
-      }, {} as Record<string, string>);
-      
-      const allAreas = Array.from(new Set(Object.values(taskToAreaMap))).sort();
+      });
 
-      const logsByDate: Record<string, { taskId: string; progress: number }[]> = {};
-      initialLogData.forEach(log => {
-        const taskId = String(log.ID_TAREFA);
-        if (taskToAreaMap[taskId]) {
-          try {
-            const timestamp = new Date(log.TIMESTAMP);
-            if (isNaN(timestamp.getTime())) return;
-            
-            const dateKey = new Date(timestamp.getUTCFullYear(), timestamp.getUTCMonth(), timestamp.getUTCDate()).toISOString().split('T')[0];
+      // Calculate the average progress for each area based on the *current* state of all tasks
+      const progressByArea: Record<string, { total: number; count: number }> = {};
+      allAreas.forEach(area => {
+        progressByArea[area] = { total: 0, count: 0 };
+      });
 
-            if (!logsByDate[dateKey]) {
-              logsByDate[dateKey] = [];
-            }
-            logsByDate[dateKey].push({
-              taskId,
-              progress: parseFloat(String(log.AVANCO_PERCENTUAL)),
-            });
-          } catch (e) { /* Ignore malformed logs */ }
+      allTaskIds.forEach(taskId => {
+        const area = taskToAreaMap[taskId];
+        if (area) { 
+          progressByArea[area].total += currentTaskProgress[taskId] || 0;
+          progressByArea[area].count++;
         }
       });
       
-      const sortedDates = Object.keys(logsByDate).sort();
-
-      if (sortedDates.length === 0) {
-        return { dailyLogChartData: [], dailyLogChartKeys: [] };
-      }
+      const [year, month, day] = dateKey.split('-');
+      const chartEntry: DailyProgressChartData = { date: `${day}/${month}/${year.slice(2)}` };
       
-      const dailyStates: DailyProgressChartData[] = [];
-      
-      // Initialize currentTaskProgress with 0 for all tasks
-      const currentTaskProgress: Record<string, number> = {};
-      Object.keys(taskToAreaMap).forEach(taskId => {
-        currentTaskProgress[taskId] = 0;
+      allAreas.forEach(area => {
+        const areaData = progressByArea[area];
+        chartEntry[area] = areaData.count > 0 ? Math.round(areaData.total / areaData.count) : 0;
       });
-      
-      for (const dateKey of sortedDates) {
-        const todaysLogs = logsByDate[dateKey] || [];
-        
-        // Update progress for tasks that have logs for the current day
-        todaysLogs.forEach(log => {
-          if (typeof log.progress === 'number' && !isNaN(log.progress)) {
-            currentTaskProgress[log.taskId] = log.progress;
-          }
-        });
 
-        // Calculate a "snapshot" of all tasks' progress on this day
-        const progressByArea: Record<string, { total: number; count: number }> = {};
-        allAreas.forEach(area => {
-          progressByArea[area] = { total: 0, count: 0 };
-        });
-
-        Object.keys(currentTaskProgress).forEach(taskId => {
-          const area = taskToAreaMap[taskId];
-          if (area) { 
-            progressByArea[area].total += currentTaskProgress[taskId];
-            progressByArea[area].count++;
-          }
-        });
-        
-        const [year, month, day] = dateKey.split('-');
-        const chartEntry: DailyProgressChartData = { date: `${day}/${month}/${year.slice(2)}` };
-        
-        allAreas.forEach(area => {
-          const areaData = progressByArea[area];
-          chartEntry[area] = areaData.count > 0 ? Math.round(areaData.total / areaData.count) : 0;
-        });
-
-        dailyStates.push(chartEntry);
-      }
-      
-      return { dailyLogChartData: dailyStates, dailyLogChartKeys: allAreas };
-  }, [initialLogData, initialData]);
+      dailyStates.push(chartEntry);
+    }
+    
+    return { dailyLogChartData: dailyStates, dailyLogChartKeys: allAreas };
+}, [initialLogData, initialData]);
 
 
   const selectedOrderTasks = useMemo(() => {
@@ -1242,7 +1249,13 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
 
   return (
-    <Card className="border-0 shadow-none sm:border sm:shadow-sm bg-transparent">
+    <Card className="border-0 shadow-none sm:border sm:shadow-sm bg-transparent relative">
+      {isLoadingProject && (
+        <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center z-50">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="mt-4 text-lg font-semibold text-primary">Carregando projeto...</p>
+        </div>
+      )}
       <CardHeader>
         <div className="flex flex-col items-center gap-4">
             <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-2">
@@ -1480,7 +1493,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                                         <ChevronDown className="h-3 w-3"/>
                                                     </Button>
                                                     <span className="w-8 text-center font-medium">{task['AVANÇO'] || '0%'}</span>
-                                                    <Button Pan>
+                                                    <Button 
                                                         size="icon"
                                                         variant="ghost" 
                                                         className="h-5 w-5" 
