@@ -176,7 +176,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [isMobileFilterOpen, setMobileFilterOpen] = useState(false);
   const { toast } = useToast();
   const [currentView, setCurrentView] = useState<'table' | 'bar-chart' | 'line-chart'>('table');
-  const [selectedOrder, setSelectedOrder] = useState<{ order: string; tasks: SheetRow[] } | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -451,6 +451,15 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
     return chartData;
   }, [filteredData]);
+  
+  const selectedOrderTasks = useMemo(() => {
+      if (!selectedOrder) return [];
+      return processedData.filter(row => 
+          String(row['ORDEM']) === selectedOrder && 
+          String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não'
+      );
+  }, [processedData, selectedOrder]);
+
 
   const totalPages = Math.ceil(filteredData.length / ROWS_PER_PAGE);
   const paginatedData = useMemo(() => {
@@ -481,8 +490,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const handleOrderClick = (order: string) => {
     if (!order || order === '-') return;
-    const tasks = processedData.filter(row => String(row['ORDEM']) === order && String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não');
-    setSelectedOrder({ order, tasks });
+    setSelectedOrder(order);
   };
 
   const handleSave = () => {
@@ -757,7 +765,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                             return (
                               <TableCell 
                                 key={`${row.id}-${header}`} 
-                                className={cn("border-r text-center p-1", 
+                                className={cn("border-r text-center p-1 text-xs", 
                                   header === 'NOME DA TAREFA' ? 'whitespace-normal max-w-[200px]' : 'whitespace-nowrap'
                                 )}
                               >
@@ -970,7 +978,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             <Dialog open={!!selectedOrder} onOpenChange={(isOpen) => !isOpen && setSelectedOrder(null)}>
                 <DialogContent className="sm:max-w-[625px]">
                     <DialogHeader>
-                        <DialogTitle>Detalhes da Ordem: {selectedOrder.order}</DialogTitle>
+                        <DialogTitle>Detalhes da Ordem: {selectedOrder}</DialogTitle>
                         <DialogDescription>
                             Lista de tarefas associadas a esta ordem de serviço.
                         </DialogDescription>
@@ -984,8 +992,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {selectedOrder.tasks.length > 0 ? (
-                                    selectedOrder.tasks.map(task => (
+                                {selectedOrderTasks.length > 0 ? (
+                                    selectedOrderTasks.map(task => (
                                         <TableRow key={task.id}>
                                             <TableCell className="font-medium">{String(task['NOME DA TAREFA'])}</TableCell>
                                             <TableCell>
