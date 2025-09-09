@@ -7,8 +7,8 @@ const SHEET_ID = '1hs8LtsybSCLIsfO-4G-EtZpBrIzf339PeuhdjOU5UeI';
 async function getSheetData() {
   try {
     const url = `${APPS_SCRIPT_URL}?action=getData&sheetId=${SHEET_ID}`;
-    // Use a short revalidation time to keep data fresh
-    const response = await fetch(url, { next: { revalidate: 60 } });
+    // Use 'no-store' to ensure data is always fresh
+    const response = await fetch(url, { cache: 'no-store' });
     if (!response.ok) {
       throw new Error(`Erro de rede: ${response.status} - ${response.statusText}`);
     }
