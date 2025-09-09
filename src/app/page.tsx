@@ -38,8 +38,19 @@ async function getSheetData() {
 
 async function getLogData() {
     try {
-        const url = `${APPS_SCRIPT_URL}?action=getLogData&sheetId=${SHEET_ID}`;
-        const response = await fetch(url, { cache: 'no-store' });
+        const payload = {
+            action: 'getLogData',
+            sheetId: SHEET_ID
+        };
+
+        const response = await fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+            cache: 'no-store',
+        });
 
         if (!response.ok) {
             console.error(`Log fetch error: ${response.status} - ${response.statusText}`);
