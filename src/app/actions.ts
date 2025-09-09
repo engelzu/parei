@@ -3,7 +3,7 @@
 
 import type { SheetRow } from '@/lib/types';
 
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxbJhgsXa2ekMX9ECmcDTJimMecwM9_vhxQqUFFHhjHltFv7mA7GSMoL2sO1pE_inhsmw/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwuwJgPA8UMKMtre5E1tPT2Rt_qvQCHuCup3OUS-n8aW3PkUYrDe04-GxK7u52PN8sOxg/exec';
 const SHEET_ID = '1hs8LtsybSCLIsfO-4G-EtZpBrIzf339PeuhdjOU5UeI';
 
 export async function saveDataToSheet(headers: string[], allData: SheetRow[], updatedRows: SheetRow[]) {
