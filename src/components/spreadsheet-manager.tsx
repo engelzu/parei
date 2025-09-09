@@ -16,6 +16,14 @@ import {
   CardTitle,
   CardDescription
 } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -168,6 +176,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [isMobileFilterOpen, setMobileFilterOpen] = useState(false);
   const { toast } = useToast();
   const [currentView, setCurrentView] = useState<'table' | 'bar-chart' | 'line-chart'>('table');
+  const [selectedOrder, setSelectedOrder] = useState<{ order: string; tasks: SheetRow[] } | null>(null);
 
 
   useEffect(() => {
@@ -470,6 +479,12 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     );
   };
 
+  const handleOrderClick = (order: string) => {
+    if (!order || order === '-') return;
+    const tasks = processedData.filter(row => String(row['ORDEM']) === order && String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não');
+    setSelectedOrder({ order, tasks });
+  };
+
   const handleSave = () => {
     startSaving(async () => {
       const result = await saveDataToSheet(headers, allData);
@@ -716,6 +731,17 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                     </Button>
                                   </div>
                                 );
+                            } else if (header === 'ORDEM') {
+                                const orderValue = String(row[header] || '-');
+                                cellContent = (
+                                  <button
+                                    className="text-blue-600 underline disabled:text-muted-foreground disabled:no-underline"
+                                    onClick={() => handleOrderClick(orderValue)}
+                                    disabled={orderValue === '-'}
+                                  >
+                                    {orderValue}
+                                  </button>
+                                );
                             } else if (header === 'DESVIO') {
                                 const desvioValue = parseFloat(String(row.DESVIO).replace('%', ''));
                                 const colorClass = desvioValue < 0 ? 'text-red-500' : desvioValue > 0 ? 'text-green-500' : 'text-gray-500';
@@ -939,6 +965,45 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             <FilterControls />
         </div>
         {renderContent()}
+
+        {selectedOrder && (
+            <Dialog open={!!selectedOrder} onOpenChange={(isOpen) => !isOpen && setSelectedOrder(null)}>
+                <DialogContent className="sm:max-w-[625px]">
+                    <DialogHeader>
+                        <DialogTitle>Detalhes da Ordem: {selectedOrder.order}</DialogTitle>
+                        <DialogDescription>
+                            Lista de tarefas associadas a esta ordem de serviço.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[60vh]">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-[80%]">Nome da Tarefa</TableHead>
+                                    <TableHead className="text-right">Avanço</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {selectedOrder.tasks.length > 0 ? (
+                                    selectedOrder.tasks.map(task => (
+                                        <TableRow key={task.id}>
+                                            <TableCell className="font-medium">{String(task['NOME DA TAREFA'])}</TableCell>
+                                            <TableCell className="text-right">{String(task['AVANÇO'])}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={2} className="text-center">
+                                            Nenhuma tarefa de execução encontrada para esta ordem.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                </DialogContent>
+            </Dialog>
+        )}
       </CardContent>
     </Card>
   );
