@@ -9,7 +9,8 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
+  LabelList
 } from "recharts"
 import {
   Card,
@@ -71,7 +72,7 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
             <LineChart
               data={chartData}
               margin={{
-                top: 5,
+                top: 20,
                 right: 30,
                 left: 20,
                 bottom: 5,
@@ -88,8 +89,20 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
                 }}
               />
               <Legend />
-              <Line type="monotone" dataKey="previsto" name="Previsto" stroke="hsl(var(--muted-foreground))" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="realizado" name="Realizado" stroke="hsl(var(--primary))" strokeWidth={2} />
+              <Line type="monotone" dataKey="previsto" name="Previsto" stroke="hsl(var(--muted-foreground))" strokeWidth={2} dot={false}>
+                 <LabelList 
+                    dataKey="previsto" 
+                    position="top" 
+                    formatter={(value: number) => value > 0 ? `${value}%` : ''} 
+                />
+              </Line>
+              <Line type="monotone" dataKey="realizado" name="Realizado" stroke="hsl(var(--primary))" strokeWidth={2}>
+                 <LabelList 
+                    dataKey="realizado" 
+                    position="top" 
+                    formatter={(value: number) => value > 0 ? `${value}%` : ''} 
+                 />
+              </Line>
             </LineChart>
           </ResponsiveContainer>
         </div>
