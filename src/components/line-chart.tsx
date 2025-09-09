@@ -24,6 +24,7 @@ export interface LineChartData {
   name: string;
   previsto: number;
   realizado: number;
+  tendencia?: number;
 }
 
 interface PlannedRealizedChartProps {
@@ -49,12 +50,18 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
     )
   }
   
-  // The data for the line chart needs points to connect. 
-  // We'll create a synthetic timeline.
+  const currentPrevisto = data[0].previsto;
+  const currentRealizado = data[0].realizado;
+  
+  // Simple trend calculation: if realized > previsto, trend is optimistic. Otherwise, pessimistic.
+  const trendEndValue = currentPrevisto > 0 
+    ? (currentRealizado / currentPrevisto) * 100
+    : currentRealizado; // Avoid division by zero
+
   const chartData = [
-      { name: 'Início', previsto: 0, realizado: 0 },
-      { name: area, previsto: data[0].previsto, realizado: data[0].realizado },
-      { name: 'Fim', previsto: 100, realizado: data[0].realizado }, // Assuming 'realizado' is the current progress
+      { name: 'Início', previsto: 0, realizado: 0, tendencia: 0 },
+      { name: area, previsto: currentPrevisto, realizado: currentRealizado, tendencia: currentRealizado },
+      { name: 'Fim', previsto: 100, tendencia: trendEndValue > 0 ? trendEndValue : undefined },
   ];
 
 
@@ -80,9 +87,9 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
-              <YAxis domain={[0, 100]} unit="%" />
+              <YAxis domain={[0, 'dataMax + 10']} unit="%" />
               <Tooltip
-                formatter={(value: number) => `${value}%`}
+                formatter={(value: number) => `${value.toFixed(0)}%`}
                 labelFormatter={(label) => {
                     if (label === 'Início' || label === 'Fim') return label;
                     return `Ponto Atual (${label})`
@@ -93,7 +100,7 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
                  <LabelList 
                     dataKey="previsto" 
                     position="top" 
-                    formatter={(value: number) => value > 0 ? `${value}%` : ''} 
+                    formatter={(value: number) => value > 0 ? `${value.toFixed(0)}%` : ''} 
                     style={{ fontWeight: 'bold', fill: 'black' }}
                 />
               </Line>
@@ -101,8 +108,16 @@ export const PlannedRealizedChart: React.FC<PlannedRealizedChartProps> = ({ data
                  <LabelList 
                     dataKey="realizado" 
                     position="top" 
-                    formatter={(value: number) => value > 0 ? `${value}%` : ''} 
+                    formatter={(value: number) => value > 0 ? `${value.toFixed(0)}%` : ''} 
                     style={{ fontWeight: 'bold', fill: 'black' }}
+                 />
+              </Line>
+               <Line type="monotone" dataKey="tendencia" name="Tendência" stroke="hsl(var(--destructive))" strokeWidth={2} strokeDasharray="5 5">
+                 <LabelList 
+                    dataKey="tendencia" 
+                    position="top" 
+                    formatter={(value: number, index: number) => index === 2 && value > 0 ? `${value.toFixed(0)}%` : ''} 
+                    style={{ fontWeight: 'bold', fill: 'hsl(var(--destructive))' }}
                  />
               </Line>
             </LineChart>
