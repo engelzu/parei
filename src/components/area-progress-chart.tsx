@@ -30,11 +30,16 @@ interface AreaProgressChartProps {
 }
 
 export const AreaProgressChart: React.FC<AreaProgressChartProps> = ({ data }) => {
+  const today = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
   if (!data || data.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Progresso por Área</CardTitle>
+           <div className="flex justify-between items-center">
+            <CardTitle>Progresso por Área</CardTitle>
+            <span className="text-sm text-muted-foreground">Hoje = {today}</span>
+          </div>
           <CardDescription>
             Não há dados de progresso para exibir.
           </CardDescription>
@@ -49,7 +54,10 @@ export const AreaProgressChart: React.FC<AreaProgressChartProps> = ({ data }) =>
   return (
     <Card className="bg-card">
       <CardHeader>
-        <CardTitle>Progresso por Área</CardTitle>
+        <div className="flex justify-between items-center">
+          <CardTitle>Progresso por Área</CardTitle>
+          <span className="text-sm text-muted-foreground">Hoje = {today}</span>
+        </div>
         <CardDescription>
           Avanço médio de tarefas por área de atuação.
         </CardDescription>
