@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo, useEffect, useTransition, type FC } from 'react';
+import { useState, useMemo, useEffect, useTransition, type FC, useCallback } from 'react';
 import {
   Table,
   TableBody,
@@ -205,7 +206,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     } else {
         headers.forEach(header => {
             const lowerHeader = header.toLowerCase();
-            if (['id', 'avanço', 'status', 'ordem'].includes(lowerHeader)) {
+             if (['id', 'avanço', 'status', 'ordem'].includes(lowerHeader)) {
                 initialVisibility[header] = true;
             } else {
                 initialVisibility[header] = !lowerHeader.startsWith('curva');
@@ -474,32 +475,15 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     }));
     setCurrentPage(1);
   };
-  
-  const handleAdvanceChange = (id: number, increment: boolean) => {
-    setAllData(prevData =>
-      prevData.map(row => {
-        if (row.id === id) {
-          const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
-          const newValue = increment ? Math.min(100, current + 5) : Math.max(0, current - 5);
-          return { ...row, 'AVANÇO': `${newValue}%` };
-        }
-        return row;
-      })
-    );
-  };
 
-  const handleOrderClick = (order: string) => {
-    if (!order || order === '-') return;
-    setSelectedOrder(order);
-  };
-
-  const handleSave = () => {
+  const triggerSave = useCallback((dataToSave: SheetRow[]) => {
     startSaving(async () => {
-      const result = await saveDataToSheet(headers, allData);
+      const result = await saveDataToSheet(headers, dataToSave);
       if (result.success) {
         toast({
-          title: "Sucesso!",
-          description: "Os dados foram salvos na planilha.",
+          title: "Salvo!",
+          description: "Os dados foram salvos automaticamente.",
+          duration: 2000,
         });
       } else {
         toast({
@@ -509,6 +493,31 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         });
       }
     });
+  }, [headers, toast]);
+
+  const handleAdvanceChange = (id: number, increment: boolean) => {
+    let updatedData: SheetRow[] = [];
+    setAllData(prevData => {
+      updatedData = prevData.map(row => {
+        if (row.id === id) {
+          const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
+          const newValue = increment ? Math.min(100, current + 5) : Math.max(0, current - 5);
+          return { ...row, 'AVANÇO': `${newValue}%` };
+        }
+        return row;
+      });
+      triggerSave(updatedData);
+      return updatedData;
+    });
+  };
+
+  const handleOrderClick = (order: string) => {
+    if (!order || order === '-') return;
+    setSelectedOrder(order);
+  };
+
+  const handleSave = () => {
+    triggerSave(allData);
   };
 
   const handleExport = async () => {
@@ -1044,3 +1053,5 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     </Card>
   );
 };
+
+    
