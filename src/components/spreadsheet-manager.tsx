@@ -68,11 +68,13 @@ import {
   LineChart as LineChartIcon,
   TableIcon,
   AreaChart,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProgressChart, type ChartData } from '@/components/progress-chart';
 import { PlannedRealizedChart, type LineChartData } from '@/components/line-chart';
 import { AreaProgressChart, type AreaProgressChartData } from '@/components/area-progress-chart';
+import { DailyProgressChart } from '@/components/daily-progress-chart';
 
 
 interface SpreadsheetManagerProps {
@@ -181,8 +183,9 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [isSaving, startSaving] = useTransition();
   const [isMobileFilterOpen, setMobileFilterOpen] = useState(false);
   const { toast } = useToast();
-  const [currentView, setCurrentView] = useState<'table' | 'bar-chart' | 'line-chart' | 'area-progress-chart'>('table');
+  const [currentView, setCurrentView] = useState<'table' | 'bar-chart' | 'line-chart' | 'area-progress-chart' | 'daily-log-chart'>('table');
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  const [updatedRows, setUpdatedRows] = useState<SheetRow[]>([]);
 
   useEffect(() => {
     setLastUpdated(new Date().toLocaleString('pt-BR'));
@@ -533,36 +536,25 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   };
 
   const handleAdvanceChange = (id: number, increment: boolean) => {
-    let updatedData: SheetRow[] | undefined;
+    let updatedRow: SheetRow | undefined;
     setAllData(currentData => {
         const newData = currentData.map(row => {
             if (row.id === id) {
                 const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
                 const newValue = increment ? Math.min(100, current + 5) : Math.max(0, current - 5);
-                return { ...row, 'AVANÇO': `${newValue}%` };
+                const newRow = { ...row, 'AVANÇO': `${newValue}%` };
+                updatedRow = newRow;
+                return newRow;
             }
             return row;
         });
-        updatedData = newData;
         return newData;
     });
 
-    if (updatedData) {
-        startSaving(async () => {
-            const result = await saveDataToSheet(reorderHeaders(initialHeaders), updatedData!);
-            if (result.success) {
-                toast({
-                    title: "Salvo!",
-                    description: "Os dados foram salvos automaticamente.",
-                    duration: 2000,
-                });
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "Erro ao Salvar",
-                    description: result.message || 'Ocorreu um erro desconhecido ao salvar os dados.',
-                });
-            }
+    if (updatedRow) {
+        setUpdatedRows(prev => {
+            const otherRows = prev.filter(r => r.id !== id);
+            return [...otherRows, updatedRow!];
         });
     }
   };
@@ -575,8 +567,9 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const handleSave = () => {
     startSaving(async () => {
-        const result = await saveDataToSheet(reorderHeaders(initialHeaders), allData);
+        const result = await saveDataToSheet(reorderHeaders(initialHeaders), allData, updatedRows);
         if (result.success) {
+            setUpdatedRows([]); // Clear updated rows after successful save
             toast({
                 title: "Salvo com sucesso!",
                 description: "Suas alterações foram gravadas na planilha.",
@@ -944,6 +937,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
               </div>
             </ScrollArea>
           );
+      case 'daily-log-chart':
+          return (
+            <ScrollArea className="h-[70vh] w-full">
+              <div className="p-4">
+                <DailyProgressChart data={[]} />
+              </div>
+            </ScrollArea>
+          );
       default:
         return null;
     }
@@ -982,6 +983,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         className="border-primary/50 uppercase"
       >
           <AreaChart className="mr-2 h-4 w-4" /> PROGRESSO
+      </Button>
+      <Button 
+        variant={currentView === 'daily-log-chart' ? 'default' : 'outline'}
+        size="sm" 
+        onClick={() => setCurrentView('daily-log-chart')} 
+        className="border-primary/50 uppercase"
+      >
+          <History className="mr-2 h-4 w-4" /> LOG DIÁRIO
       </Button>
     </>
   );

@@ -1,3 +1,4 @@
+
 'use server';
 
 import type { SheetRow } from '@/lib/types';
@@ -5,7 +6,7 @@ import type { SheetRow } from '@/lib/types';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxbJhgsXa2ekMX9ECmcDTJimMecwM9_vhxQqUFFHhjHltFv7mA7GSMoL2sO1pE_inhsmw/exec';
 const SHEET_ID = '1hs8LtsybSCLIsfO-4G-EtZpBrIzf339PeuhdjOU5UeI';
 
-export async function saveDataToSheet(headers: string[], allData: SheetRow[]) {
+export async function saveDataToSheet(headers: string[], allData: SheetRow[], updatedRows: SheetRow[]) {
   if (allData.length === 0 || headers.length === 0) {
     return { success: false, message: 'Nenhum dado para salvar.' };
   }
@@ -20,11 +21,18 @@ export async function saveDataToSheet(headers: string[], allData: SheetRow[]) {
       })
     );
 
+    // Prepare only the data needed for the log
+    const logData = updatedRows.map(row => ({
+      'ID': row['ID'],
+      'AVANÇO': String(row['AVANÇO'] || '0').replace('%', ''),
+    }));
+
     const payload = {
       action: 'saveData',
       sheetId: SHEET_ID,
       values: JSON.stringify(values),
-      headers: JSON.stringify(headers)
+      headers: JSON.stringify(headers),
+      logData: JSON.stringify(logData) // Send log data to the script
     };
 
     const response = await fetch(APPS_SCRIPT_URL, {
