@@ -1,3 +1,4 @@
+
 import { SpreadsheetManager } from '@/components/spreadsheet-manager';
 import type { SheetRow } from '@/lib/types';
 
@@ -35,14 +36,57 @@ async function getSheetData() {
   }
 }
 
+async function getLogData() {
+    try {
+        const url = `${APPS_SCRIPT_URL}?action=getLogData&sheetId=${SHEET_ID}`;
+        const response = await fetch(url, { cache: 'no-store' });
+
+        if (!response.ok) {
+            console.error(`Log fetch error: ${response.status} - ${response.statusText}`);
+            return []; // Retorna vazio em caso de erro de rede, mas não quebra a página
+        }
+        
+        const json = await response.json();
+        
+        if (json.error) {
+            console.error('Log fetch error from script:', json.error);
+            return []; // Retorna vazio se o script retornar erro
+        }
+
+        if (!Array.isArray(json.data) || json.data.length <= 1) {
+            return []; // Não há dados de log para processar
+        }
+
+        const logHeaders = json.data[0];
+        const logData = json.data.slice(1).map((row: any[]) => {
+            const rowObj: { [key: string]: any } = {};
+            row.forEach((cell, i) => {
+                rowObj[logHeaders[i]] = cell;
+            });
+            return rowObj;
+        });
+
+        return logData;
+    } catch (error) {
+        console.error('Erro ao buscar dados de log:', error);
+        return []; // Retorna um array vazio em caso de exceção
+    }
+}
+
 
 export default async function Home() {
   const { headers, data, error } = await getSheetData();
+  const logData = await getLogData();
 
   return (
     <main className="bg-transparent min-h-screen">
       <div className="w-full px-2 sm:px-4 py-8">
-        <SpreadsheetManager initialData={data} initialHeaders={headers} initialError={error} />
+        <SpreadsheetManager 
+          initialData={data} 
+          initialHeaders={headers} 
+          initialError={error}
+          initialLogData={logData}
+        />
       </div>
     </main>
   );

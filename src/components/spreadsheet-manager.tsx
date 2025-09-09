@@ -74,13 +74,14 @@ import { cn } from '@/lib/utils';
 import { ProgressChart, type ChartData } from '@/components/progress-chart';
 import { PlannedRealizedChart, type LineChartData } from '@/components/line-chart';
 import { AreaProgressChart, type AreaProgressChartData } from '@/components/area-progress-chart';
-import { DailyProgressChart } from '@/components/daily-progress-chart';
+import { DailyProgressChart, type DailyProgressChartData } from '@/components/daily-progress-chart';
 
 
 interface SpreadsheetManagerProps {
   initialData: SheetRow[];
   initialHeaders: string[];
   initialError: string | null;
+  initialLogData?: any[];
 }
 
 const ROWS_PER_PAGE = 15;
@@ -165,6 +166,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   initialData,
   initialHeaders,
   initialError,
+  initialLogData = [],
 }) => {
   const [allData, setAllData] = useState<SheetRow[]>(initialData);
   const [headers] = useState<string[]>(() => reorderHeaders(initialHeaders));
@@ -512,6 +514,87 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       .sort((a, b) => a['AVANÇO MÉDIO'] - b['AVANÇO MÉDIO']);
   }, [filteredData]);
   
+  const dailyLogChartData = useMemo<DailyProgressChartData[]>(() => {
+    if (!initialLogData || initialLogData.length === 0) {
+        return [];
+    }
+
+    const taskCount = initialData.filter(row => String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não').length;
+    if (taskCount === 0) return [];
+
+    const progressByDate: Record<string, { totalAdvance: number, tasks: Set<string> }> = {};
+
+    initialLogData.forEach(logEntry => {
+        const date = new Date(logEntry.TIMESTAMP).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const taskId = String(logEntry.ID_TAREFA);
+        const advance = parseFloat(String(logEntry.AVANCO_PERCENTUAL));
+
+        if (!progressByDate[date]) {
+            progressByDate[date] = { totalAdvance: 0, tasks: new Set() };
+        }
+
+        // We only want the latest update for each task on a given day
+        if (!progressByDate[date].tasks.has(taskId)) {
+            progressByDate[date].tasks.add(taskId);
+        }
+    });
+
+    const latestTaskProgress: Record<string, number> = {};
+    initialData.forEach(row => {
+       if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
+         latestTaskProgress[String(row.id)] = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
+       }
+    });
+
+    initialLogData.forEach(logEntry => {
+        const taskId = String(logEntry.ID_TAREFA);
+        const advance = parseFloat(String(logEntry.AVANCO_PERCENTUAL));
+        latestTaskProgress[taskId] = advance; // The latest log entry will overwrite older ones
+    });
+
+    const chartData = Object.keys(progressByDate).map(date => {
+        const dailyTotal = Object.values(latestTaskProgress).reduce((sum, current) => sum + current, 0);
+        const average = Math.round(dailyTotal / taskCount);
+
+        return {
+            date,
+            'AVANÇO': average
+        };
+    }).sort((a, b) => {
+        const [dayA, monthA, yearA] = a.date.split('/');
+        const [dayB, monthB, yearB] = b.date.split('/');
+        return new Date(`${yearA}-${monthA}-${dayA}`).getTime() - new Date(`${yearB}-${monthB}-${dayB}`).getTime();
+    });
+
+    // Consolidate data by summing up unique task progresses for each day
+    const consolidatedProgress: Record<string, Record<string, number>> = {};
+    initialLogData.forEach(log => {
+      const date = new Date(log.TIMESTAMP).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+      if (!consolidatedProgress[date]) {
+        consolidatedProgress[date] = {};
+      }
+      consolidatedProgress[date][log.ID_TAREFA] = parseFloat(log.AVANCO_PERCENTUAL);
+    });
+
+    // Create a running total of progress
+    const runningTaskProgress: { [key: string]: number } = {};
+    const finalChartData = Object.keys(consolidatedProgress).sort((a, b) => {
+      const [dayA, monthA, yearA] = a.split('/');
+      const [dayB, monthB, yearB] = b.split('/');
+      return new Date(`${yearA}-${monthA}-${dayA}`).getTime() - new Date(`${yearB}-${monthB}-${dayB}`).getTime();
+    }).map(date => {
+      Object.assign(runningTaskProgress, consolidatedProgress[date]);
+      const totalAdvance = Object.values(runningTaskProgress).reduce((acc, val) => acc + val, 0);
+      const avgAdvance = taskCount > 0 ? totalAdvance / taskCount : 0;
+      return {
+        date,
+        'AVANÇO': Math.round(avgAdvance),
+      };
+    });
+
+    return finalChartData;
+  }, [initialLogData, initialData]);
+
   const selectedOrderTasks = useMemo(() => {
       if (!selectedOrder) return [];
       return processedData.filter(row => 
@@ -575,6 +658,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 description: "Suas alterações foram gravadas na planilha.",
                 duration: 3000,
             });
+            // Consider reloading to get fresh log data, or updating it in state
+             window.location.reload();
         } else {
             toast({
                 variant: "destructive",
@@ -941,7 +1026,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
           return (
             <ScrollArea className="h-[70vh] w-full">
               <div className="p-4">
-                <DailyProgressChart data={[]} />
+                <DailyProgressChart data={dailyLogChartData} />
               </div>
             </ScrollArea>
           );
