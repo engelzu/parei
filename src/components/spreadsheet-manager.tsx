@@ -418,14 +418,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             }
 
             const avancoNum = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
-            
+            const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
+
             if (avancoNum === 100) {
                 dataByArea[area]['CONCLUÍDO']++;
             } else if (avancoNum > 0) {
                 dataByArea[area]['EM ANDAMENTO']++;
             } else { // avancoNum is 0 or NaN
                 dataByArea[area]['NÃO INICIADO']++;
-                const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
                 if (startDate && startDate.getTime() < today.getTime()) {
                     dataByArea[area]['ATRASADA']++;
                 }
@@ -555,8 +555,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                   const timestamp = new Date(log.TIMESTAMP);
                   if (isNaN(timestamp.getTime())) return;
                   
-                  const date = new Date(timestamp.getFullYear(), timestamp.getMonth(), timestamp.getDate());
-                  const dateStr = date.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' });
+                  const date = new Date(timestamp.getUTCFullYear(), timestamp.getUTCMonth(), timestamp.getUTCDate());
+                  const dateStr = date.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit', timeZone: 'UTC' });
                   
                   if (!logsByDate[dateStr]) {
                       logsByDate[dateStr] = [];
@@ -1154,7 +1154,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       <CardHeader>
         <div className="flex flex-col items-center gap-4">
             <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-2">
-                <CardTitle className="text-2xl font-bold text-primary text-center">{currentProject.name}</CardTitle>
+                <CardTitle className="text-2xl font-bold text-primary text-center">{currentProject?.name || 'Carregando Projeto...'}</CardTitle>
                 <CardDescription className="text-primary/70 text-sm">
                     {lastUpdated ? `Última atualização: ${lastUpdated}` : 'Carregando...'}
                 </CardDescription>
