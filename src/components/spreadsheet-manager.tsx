@@ -89,6 +89,7 @@ import {
   AreaChart,
   History,
   PlusCircle,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProgressChart, type ChartData } from '@/components/progress-chart';
@@ -845,6 +846,67 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     XLSX.utils.book_append_sheet(workbook, worksheet, "Dados");
     XLSX.writeFile(workbook, "dados_exportados.xlsx");
   };
+
+  const handleDownloadTemplate = async () => {
+    const XLSX = await import('xlsx');
+    
+    // Define the standard headers for the template
+    const templateHeaders = [
+      "ORDEM",
+      "NOME DA TAREFA",
+      "INÍCIO DA LINHA DE BASE",
+      "TÉRMINO DA LINHA DE BASE",
+      "DURAÇÃO DA LINHA DE BASE",
+      "TRABALHO",
+      "TIPO",
+      "CAMINHO CRÍTICO(SIM/NÃO)",
+      "RESUMO(SIM/NÃO)",
+      "CÓDIGO DA ATIVIDADE",
+      "ÁREA",
+      "DISCIPLINA",
+      "SISTEMA",
+      "SUBSISTEMA",
+      "EQUIPAMENTO",
+      "TAG",
+      "LOCALIZAÇÃO",
+      "RESPONSÁVEL",
+      "ATUALIZADOR 1(EMAIL)",
+      "AVANÇO"
+    ];
+    
+    // Define one row of example data
+    const exampleData = [{
+      "ORDEM": "OS-12345",
+      "NOME DA TAREFA": "Inspecionar Motor Principal",
+      "INÍCIO DA LINHA DE BASE": "01/08/2024",
+      "TÉRMINO DA LINHA DE BASE": "02/08/2024",
+      "DURAÇÃO DA LINHA DE BASE": "2d",
+      "TRABALHO": "16h",
+      "TIPO": "Atividade",
+      "CAMINHO CRÍTICO(SIM/NÃO)": "Sim",
+      "RESUMO(SIM/NÃO)": "Não",
+      "CÓDIGO DA ATIVIDADE": "INSP-MEC-001",
+      "ÁREA": "MECÂNICA",
+      "DISCIPLINA": "Mecânica",
+      "SISTEMA": "Propulsão",
+      "SUBSISTEMA": "Motor Principal",
+      "EQUIPAMENTO": "Motor Diesel 1A",
+      "TAG": "MOT-01A",
+      "LOCALIZAÇÃO": "Sala de Máquinas",
+      "RESPONSÁVEL": "João Silva",
+      "ATUALIZADOR 1(EMAIL)": "joao.silva@email.com",
+      "AVANÇO": "0%"
+    }];
+
+    const worksheet = XLSX.utils.json_to_sheet(exampleData, { header: templateHeaders });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
+    XLSX.writeFile(workbook, "template_parei.xlsx");
+     toast({
+      title: "Template baixado!",
+      description: "O arquivo 'template_parei.xlsx' foi salvo.",
+    });
+  };
   
   const clearFilters = () => {
     setSearchTerm('');
@@ -1351,7 +1413,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 </SelectContent>
                 </Select>
             </div>
-            <Dialog open={isAddProjectDialogOpen} onOpenChange={setAddProjectDialogOpen}>
+             <Dialog open={isAddProjectDialogOpen} onOpenChange={setAddProjectDialogOpen}>
                 <DialogTrigger asChild>
                     <Button variant="outline" className="border-primary/50 uppercase h-9">
                         <PlusCircle className="mr-2 h-4 w-4" />
@@ -1403,6 +1465,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     </Form>
                 </DialogContent>
             </Dialog>
+            <Button variant="outline" className="border-primary/50 uppercase h-9" onClick={handleDownloadTemplate}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Baixar Template
+            </Button>
         </div>
 
         <div className="md:hidden mb-4">
