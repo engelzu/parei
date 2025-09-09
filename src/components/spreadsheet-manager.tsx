@@ -980,7 +980,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-[80%]">Nome da Tarefa</TableHead>
-                                    <TableHead className="text-right">Avanço</TableHead>
+                                    <TableHead>Avanço</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -988,7 +988,27 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                     selectedOrder.tasks.map(task => (
                                         <TableRow key={task.id}>
                                             <TableCell className="font-medium">{String(task['NOME DA TAREFA'])}</TableCell>
-                                            <TableCell className="text-right">{String(task['AVANÇO'])}</TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center justify-end gap-0.5">
+                                                    <Button 
+                                                        size="icon" 
+                                                        variant="ghost" 
+                                                        className="h-5 w-5" 
+                                                        onClick={() => handleAdvanceChange(task.id, false)}
+                                                    >
+                                                        <ChevronDown className="h-3 w-3"/>
+                                                    </Button>
+                                                    <span className="w-8 text-center font-medium">{task['AVANÇO'] || '0%'}</span>
+                                                    <Button 
+                                                        size="icon"
+                                                        variant="ghost" 
+                                                        className="h-5 w-5" 
+                                                        onClick={() => handleAdvanceChange(task.id, true)}
+                                                    >
+                                                        <ChevronUp className="h-3 w-3"/>
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
                                         </TableRow>
                                     ))
                                 ) : (
