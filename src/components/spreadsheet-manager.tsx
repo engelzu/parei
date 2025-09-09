@@ -185,12 +185,22 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             });
         } catch (e) {
             headers.forEach(header => {
-                initialVisibility[header] = !header.toLowerCase().startsWith('curva');
+                const lowerHeader = header.toLowerCase();
+                if (['avanço', 'status', 'ordem'].includes(lowerHeader)) {
+                    initialVisibility[header] = true;
+                } else {
+                    initialVisibility[header] = !lowerHeader.startsWith('curva');
+                }
             });
         }
     } else {
         headers.forEach(header => {
-            initialVisibility[header] = !header.toLowerCase().startsWith('curva');
+            const lowerHeader = header.toLowerCase();
+            if (['avanço', 'status', 'ordem'].includes(lowerHeader)) {
+                initialVisibility[header] = true;
+            } else {
+                initialVisibility[header] = !lowerHeader.startsWith('curva');
+            }
         });
     }
     setColumnVisibility(initialVisibility);
@@ -271,14 +281,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       const avancoNum = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
       if (isFinite(avancoNum)) {
         if (avancoNum === 100) {
-          row['STATUS'] = 'CONCLUÍDO';
+          row['STATUS'] = 'CON';
         } else if (avancoNum > 0) {
-          row['STATUS'] = 'EM ANDAMENTO';
+          row['STATUS'] = 'AND';
         } else {
-          row['STATUS'] = 'NÃO INICIADO';
+          row['STATUS'] = 'NI';
         }
       } else {
-        row['STATUS'] = 'NÃO INICIADO';
+        row['STATUS'] = 'NI';
       }
 
       const order = String(row['ORDEM'] || '');
@@ -365,16 +375,21 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   }, [activeFilters, initialData]);
 
   const barChartData = useMemo<ChartData[]>(() => {
-    const dataByArea: Record<string, { [key: string]: number, 'CONCLUÍDO': number, 'EM ANDAMENTO': number, 'NÃO INICIADO': number }> = {};
+    const dataByArea: Record<string, { [key: string]: number, 'CON': number, 'AND': number, 'NI': number }> = {};
+    const statusMapping: Record<string, 'CON' | 'AND' | 'NI'> = {
+        'CON': 'CON',
+        'AND': 'AND',
+        'NI': 'NI',
+    };
 
     filteredData.forEach(row => {
       const area = String(row['ÁREA'] || 'N/A');
       if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
         if (!dataByArea[area]) {
-          dataByArea[area] = { 'CONCLUÍDO': 0, 'EM ANDAMENTO': 0, 'NÃO INICIADO': 0 };
+          dataByArea[area] = { 'CON': 0, 'AND': 0, 'NI': 0 };
         }
-        const status = String(row['STATUS'] || 'NÃO INICIADO');
-        if (dataByArea[area][status] !== undefined) {
+        const status = statusMapping[String(row['STATUS'])];
+        if (status) {
           dataByArea[area][status]++;
         }
       }
@@ -383,9 +398,9 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     return Object.keys(dataByArea)
       .map(area => ({
         area,
-        'CONCLUÍDO': dataByArea[area]['CONCLUÍDO'],
-        'EM ANDAMENTO': dataByArea[area]['EM ANDAMENTO'],
-        'NÃO INICIADO': dataByArea[area]['NÃO INICIADO'],
+        'CONCLUÍDO': dataByArea[area]['CON'],
+        'EM ANDAMENTO': dataByArea[area]['AND'],
+        'NÃO INICIADO': dataByArea[area]['NI'],
       }))
       .sort((a, b) => a.area.localeCompare(b.area));
   }, [filteredData]);
@@ -707,7 +722,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                 cellContent = <span className={cn('font-bold', colorClass)}>{row.DESVIO}</span>;
                             } else if (header === 'STATUS') {
                                 const status = String(row.STATUS);
-                                const colorClass = status === 'CONCLUÍDO' ? 'text-green-500' : status === 'EM ANDAMENTO' ? 'text-blue-500' : 'text-gray-500';
+                                const colorClass = status === 'CON' ? 'text-green-500' : status === 'AND' ? 'text-blue-500' : 'text-gray-500';
                                 cellContent = <span className={cn('font-bold', colorClass)}>{status}</span>;
                             } else {
                                 cellContent = String(row[header] || '-');
@@ -802,7 +817,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       <CardHeader>
         <div className="flex flex-col items-center gap-4">
             <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-2">
-                <CardTitle className="text-2xl font-bold text-primary">PAREI v1.1 - GESTOR DE PARADAS INDUSTRIAIS</CardTitle>
+                <CardTitle className="text-2xl font-bold text-primary text-center">PAREI v1.1 - GESTOR DE PARADAS INDUSTRIAIS</CardTitle>
                 <CardDescription className="text-primary/70 text-sm">
                     {lastUpdated ? `Última atualização: ${lastUpdated}` : 'Carregando...'}
                 </CardDescription>
