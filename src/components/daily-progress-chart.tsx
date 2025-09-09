@@ -83,7 +83,7 @@ export const DailyProgressChart: React.FC<DailyProgressChartProps> = ({ data, da
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={data}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              margin={{ top: 20, right: 40, left: 20, bottom: 20 }}
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
@@ -106,8 +106,9 @@ export const DailyProgressChart: React.FC<DailyProgressChartProps> = ({ data, da
                     <LabelList 
                         dataKey={key} 
                         position="top" 
+                        offset={10}
                         formatter={(value: number) => `${value}%`}
-                        style={{ fill: 'hsl(var(--foreground))', fontSize: '10px' }}
+                        style={{ fill: 'hsl(var(--foreground))', fontSize: '12px', fontWeight: 'bold' }}
                     />
                 </Line>
               ))}
