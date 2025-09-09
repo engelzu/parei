@@ -167,7 +167,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({
     'ÁREA': [],
     'RESPONSÁVEL': [],
-    'ATUALIZADOR 1': [],
+    'ATUALIZADOR 1(EMAIL)': [],
   });
   const [resumoFilter, setResumoFilter] = useState<'all' | 'sim' | 'não'>('all');
   const [caminhoCriticoFilter, setCaminhoCriticoFilter] = useState<'all' | 'sim' | 'não'>('all');
@@ -230,7 +230,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     const options: Record<string, string[]> = {
       'ÁREA': [],
       'RESPONSÁVEL': [],
-      'ATUALIZADOR 1': [],
+      'ATUALIZADOR 1(EMAIL)': [],
     };
     if (initialData.length > 0) {
       const area = new Set<string>();
@@ -243,7 +243,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       });
       options['ÁREA'] = Array.from(area).sort();
       options['RESPONSÁVEL'] = Array.from(responsavel).sort();
-      options['ATUALIZADOR 1'] = Array.from(atualizador1).sort();
+      options['ATUALIZADOR 1(EMAIL)'] = Array.from(atualizador1).sort();
     }
     return options;
   }, [initialData]);
@@ -347,7 +347,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     data = data.filter(row => {
       if (activeFilters['ÁREA'].length > 0 && !activeFilters['ÁREA'].includes(String(row['ÁREA']))) return false;
       if (activeFilters['RESPONSÁVEL'].length > 0 && !activeFilters['RESPONSÁVEL'].includes(String(row['RESPONSÁVEL']))) return false;
-      if (activeFilters['ATUALIZADOR 1'].length > 0 && !activeFilters['ATUALIZADOR 1'].includes(String(row['ATUALIZADOR 1(EMAIL)']))) return false;
+      if (activeFilters['ATUALIZADOR 1(EMAIL)'].length > 0 && !activeFilters['ATUALIZADOR 1(EMAIL)'].includes(String(row['ATUALIZADOR 1(EMAIL)']))) return false;
       return true;
     });
 
@@ -365,7 +365,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   }, [processedData, searchTerm, activeFilters, resumoFilter, caminhoCriticoFilter]);
   
   const progressByUpdater = useMemo(() => {
-    const selectedUpdater = activeFilters['ATUALIZADOR 1']?.[0];
+    const selectedUpdater = activeFilters['ATUALIZADOR 1(EMAIL)']?.[0];
     if (!selectedUpdater || selectedUpdater === 'all') return null;
 
     const updaterTasks = initialData.filter(
@@ -536,7 +536,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   
   const clearFilters = () => {
     setSearchTerm('');
-    setActiveFilters({ 'ÁREA': [], 'RESPONSÁVEL': [], 'ATUALIZADOR 1': [] });
+    setActiveFilters({ 'ÁREA': [], 'RESPONSÁVEL': [], 'ATUALIZADOR 1(EMAIL)': [] });
     setResumoFilter('all');
     setCaminhoCriticoFilter('all');
     setCurrentPage(1);
@@ -655,15 +655,15 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         )}
         <Label className="text-xs font-medium text-primary">ATUALIZADOR 1</Label>
         <Select
-          value={activeFilters['ATUALIZADOR 1']?.[0] || 'all'}
-          onValueChange={(value) => handleFilterChange('ATUALIZADOR 1', value)}
+          value={activeFilters['ATUALIZADOR 1(EMAIL)']?.[0] || 'all'}
+          onValueChange={(value) => handleFilterChange('ATUALIZADOR 1(EMAIL)', value)}
         >
           <SelectTrigger className="w-full mt-1 h-9 rounded-md">
             <SelectValue placeholder="Selecionar ATUALIZADOR 1" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            {filterOptions['ATUALIZADOR 1'].map(option => (
+            {filterOptions['ATUALIZADOR 1(EMAIL)'].map(option => (
               <SelectItem key={option} value={option}>{option}</SelectItem>
             ))}
           </SelectContent>
