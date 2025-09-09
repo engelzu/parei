@@ -35,34 +35,27 @@ const CustomizedLabel = (props: any) => {
     const { x, y, width, height, value, index, data, dataKey } = props;
     const chartItem = data[index];
     const total = chartItem['CONCLUÍDO'] + chartItem['EM ANDAMENTO'] + chartItem['NÃO INICIADO'];
-    const radius = 10;
     
     const percentage = total > 0 ? value / total : 0;
     
     // Threshold to decide when to render the label outside
-    const isTooSmall = percentage < 0.05;
+    const isTooSmall = height < 20 && value > 0;
 
     if (value === 0) {
       return null;
     }
 
     if (isTooSmall) {
-      // Render label outside with a line
-      const midAngle = -45; // Angle for the line
-      const ex = x + width / 2;
-      const ey = y + height / 2;
-      const sx = ex + (width / 2 + 5) * Math.cos(midAngle);
-      const sy = ey + (height / 2 + 5) * Math.sin(midAngle);
-      const mx = ex + (width / 2 + 15) * Math.cos(midAngle);
-      const my = ey + (height / 2 + 15) * Math.sin(midAngle);
-      const tx = mx + 5 * Math.cos(midAngle);
-      const ty = my;
+      const lineY = y + height / 2;
+      const textY = lineY;
+      const lineStartX = x + width;
+      const lineEndX = x + width + 10;
+      const textX = lineEndX + 5;
       
       return (
         <g>
-          <path d={`M${sx},${sy}L${mx},${my}L${tx},${ty}`} stroke="hsl(var(--foreground))" fill="none" strokeWidth={1}/>
-          <circle cx={sx} cy={sy} r={2} fill="hsl(var(--foreground))" stroke="none" />
-          <text x={tx + (midAngle > 90 * Math.PI / 180 ? -5 : 5)} y={ty} textAnchor="start" dominantBaseline="middle" fill="hsl(var(--foreground))" style={{ fontWeight: 'bold' }}>
+          <line x1={lineStartX} y1={lineY} x2={lineEndX} y2={textY} stroke="hsl(var(--foreground))" strokeWidth={1}/>
+          <text x={textX} y={textY} textAnchor="start" dominantBaseline="middle" fill="hsl(var(--foreground))" style={{ fontWeight: 'bold' }}>
             {`${value}`}
           </text>
         </g>
@@ -118,23 +111,24 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ data }) => {
                 left: 20,
                 bottom: 5,
               }}
+              layout="vertical"
             >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="area" />
-              <YAxis allowDecimals={false} />
+              <XAxis type="number" allowDecimals={false} />
+              <YAxis type="category" dataKey="area" />
               <Tooltip
                 cursor={{ fill: 'hsl(var(--accent) / 0.3)' }}
                 formatter={(value: number, name: string) => [value, name]}
               />
               <Legend />
               <Bar dataKey="NÃO INICIADO" stackId="a" fill="#d1d5db" name="Não Iniciado">
-                <LabelList content={<CustomizedLabel dataKey="NÃO INICIADO" data={data}/>} />
+                <LabelList dataKey="NÃO INICIADO" content={<CustomizedLabel data={data}/>} />
               </Bar>
               <Bar dataKey="EM ANDAMENTO" stackId="a" fill="#3b82f6" name="Em Andamento">
-                 <LabelList content={<CustomizedLabel dataKey="EM ANDAMENTO" data={data}/>} />
+                 <LabelList dataKey="EM ANDAMENTO" content={<CustomizedLabel data={data}/>} />
               </Bar>
               <Bar dataKey="CONCLUÍDO" stackId="a" fill="#22c55e" name="Concluído">
-                 <LabelList content={<CustomizedLabel dataKey="CONCLUÍDO" data={data}/>} />
+                 <LabelList dataKey="CONCLUÍDO" content={<CustomizedLabel data={data}/>} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
