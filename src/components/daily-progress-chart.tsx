@@ -79,7 +79,7 @@ export const DailyProgressChart: React.FC<DailyProgressChartProps> = ({ data, da
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[70vh] w-full">
+        <div className="h-[60vh] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={data}
