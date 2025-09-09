@@ -237,11 +237,11 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         const elapsedDuration = today.getTime() - startDate.getTime();
         
         let previsto = 0;
-        if (today >= endDate) {
+        if (today.getTime() >= endDate.getTime()) {
           previsto = 100;
         } else if (totalDuration > 0) {
           previsto = Math.max(0, Math.min(100, (elapsedDuration / totalDuration) * 100));
-        } else if (today >= startDate) {
+        } else if (today.getTime() >= startDate.getTime()) {
             previsto = 100;
         }
 
@@ -761,11 +761,11 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     {lastUpdated ? `Última atualização com a base de dados: ${lastUpdated}` : 'Carregando...'}
                 </CardDescription>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-wrap items-center justify-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="border-primary/50 uppercase">
                     <RotateCw className="mr-2 h-4 w-4" /> ATUALIZAR
                 </Button>
-                <div className="flex items-center justify-center p-2 bg-primary text-primary-foreground rounded-md text-sm font-medium uppercase">
+                <div className="flex items-center justify-center p-2 bg-primary text-primary-foreground rounded-md text-sm font-medium uppercase h-9">
                   IDs: {filteredData.length}
                 </div>
                  <Button size="sm" onClick={handleSave} disabled={isSaving} className="uppercase">
@@ -812,23 +812,23 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     </ScrollArea>
                   </DropdownMenuContent>
                 </DropdownMenu>
-            </div>
-            <div className="relative w-full max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Pesquisar em toda a base..."
-                    value={searchTerm}
-                    onChange={e => {
-                      setSearchTerm(e.target.value)
-                      setCurrentPage(1)
-                    }}
-                    className="pl-10 pr-10 w-full h-9 rounded-md bg-card"
-                />
-                {searchTerm && (
-                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                )}
+                <div className="relative w-full max-w-sm sm:w-auto">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Pesquisar em toda a base..."
+                        value={searchTerm}
+                        onChange={e => {
+                          setSearchTerm(e.target.value)
+                          setCurrentPage(1)
+                        }}
+                        className="pl-10 pr-10 w-full h-9 rounded-md bg-card"
+                    />
+                    {searchTerm && (
+                        <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                    )}
+                </div>
             </div>
         </div>
       </CardHeader>
