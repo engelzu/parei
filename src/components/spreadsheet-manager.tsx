@@ -683,7 +683,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                     </Button>
                                     <span className="w-12 text-center font-medium">{row[header] || '0%'}</span>
                                     <Button 
-                                      size="icon" _
+                                      size="icon"
                                       variant="ghost" 
                                       className="h-7 w-7" 
                                       onClick={() => handleAdvanceChange(row.id, true)}
