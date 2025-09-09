@@ -186,7 +186,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         } catch (e) {
             headers.forEach(header => {
                 const lowerHeader = header.toLowerCase();
-                if (['avanço', 'status', 'ordem'].includes(lowerHeader)) {
+                if (['id', 'avanço', 'status', 'ordem'].includes(lowerHeader)) {
                     initialVisibility[header] = true;
                 } else {
                     initialVisibility[header] = !lowerHeader.startsWith('curva');
@@ -196,7 +196,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     } else {
         headers.forEach(header => {
             const lowerHeader = header.toLowerCase();
-            if (['avanço', 'status', 'ordem'].includes(lowerHeader)) {
+            if (['id', 'avanço', 'status', 'ordem'].includes(lowerHeader)) {
                 initialVisibility[header] = true;
             } else {
                 initialVisibility[header] = !lowerHeader.startsWith('curva');
@@ -694,21 +694,21 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                 cellContent = formatDateValue(row[header]);
                             } else if (header === 'AVANÇO') {
                                 cellContent = (
-                                  <div className="flex items-center justify-center gap-2">
+                                  <div className="flex items-center justify-center gap-1">
                                     <Button 
                                       size="icon" 
                                       variant="ghost" 
-                                      className="h-7 w-7" 
+                                      className="h-6 w-6" 
                                       onClick={() => handleAdvanceChange(row.id, false)}
                                       disabled={isSummaryRow}
                                     >
                                       <ChevronDown className="h-4 w-4"/>
                                     </Button>
-                                    <span className="w-12 text-center font-medium">{row[header] || '0%'}</span>
+                                    <span className="w-10 text-center font-medium">{row[header] || '0%'}</span>
                                     <Button 
                                       size="icon"
                                       variant="ghost" 
-                                      className="h-7 w-7" 
+                                      className="h-6 w-6" 
                                       onClick={() => handleAdvanceChange(row.id, true)}
                                       disabled={isSummaryRow}
                                     >
@@ -731,7 +731,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                             return (
                               <TableCell 
                                 key={`${row.id}-${header}`} 
-                                className={cn("border-r text-center", 
+                                className={cn("border-r text-center p-2", 
                                   header === 'NOME DA TAREFA' ? 'whitespace-normal max-w-[200px]' : 'whitespace-nowrap'
                                 )}
                               >
