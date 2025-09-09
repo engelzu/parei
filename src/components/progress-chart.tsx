@@ -32,30 +32,25 @@ interface ProgressChartProps {
 }
 
 const CustomizedLabel = (props: any) => {
-    const { x, y, width, height, value, index, data, dataKey } = props;
-    const chartItem = data[index];
-    const total = chartItem['CONCLUÍDO'] + chartItem['EM ANDAMENTO'] + chartItem['NÃO INICIADO'];
-    
-    const percentage = total > 0 ? value / total : 0;
+    const { x, y, width, height, value } = props;
     
     // Threshold to decide when to render the label outside
-    const isTooSmall = height < 20 && value > 0;
+    const isTooSmall = width < 20 && value > 0;
 
     if (value === 0) {
       return null;
     }
 
     if (isTooSmall) {
-      const lineY = y + height / 2;
-      const textY = lineY;
-      const lineStartX = x + width;
-      const lineEndX = x + width + 10;
-      const textX = lineEndX + 5;
+      const lineX = x + width / 2;
+      const lineY = y + height;
+      const lineEndY = y + height + 10;
+      const textY = lineEndY + 5;
       
       return (
         <g>
-          <line x1={lineStartX} y1={lineY} x2={lineEndX} y2={textY} stroke="hsl(var(--foreground))" strokeWidth={1}/>
-          <text x={textX} y={textY} textAnchor="start" dominantBaseline="middle" fill="hsl(var(--foreground))" style={{ fontWeight: 'bold' }}>
+          <line x1={lineX} y1={lineY} x2={lineX} y2={lineEndY} stroke="hsl(var(--foreground))" strokeWidth={1}/>
+          <text x={lineX} y={textY} textAnchor="middle" dominantBaseline="middle" fill="hsl(var(--foreground))" style={{ fontWeight: 'bold' }}>
             {`${value}`}
           </text>
         </g>
@@ -115,7 +110,7 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({ data }) => {
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" allowDecimals={false} />
-              <YAxis type="category" dataKey="area" />
+              <YAxis type="category" dataKey="area" tick={false} axisLine={false} tickLine={false} width={10} />
               <Tooltip
                 cursor={{ fill: 'hsl(var(--accent) / 0.3)' }}
                 formatter={(value: number, name: string) => [value, name]}
