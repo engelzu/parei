@@ -466,7 +466,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const totalPages = Math.ceil(filteredData.length / ROWS_PER_PAGE);
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
-    return filteredData.slice(startIndex, startIndex + ROWS_PER_PAGE);
+    return filteredData.slice(startIndex, startIndex, startIndex + ROWS_PER_PAGE);
   }, [filteredData, currentPage]);
 
   const handleFilterChange = (filterName: string, value: string) => {
@@ -627,7 +627,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            {filterOptions['ÁREA'].map(option => (
+            {filterOptions['ÁREA']?.map(option => (
               <SelectItem key={option} value={option}>{option}</SelectItem>
             ))}
           </SelectContent>
@@ -644,7 +644,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            {filterOptions['RESPONSÁVEL'].map(option => (
+            {filterOptions['RESPONSÁVEL']?.map(option => (
               <SelectItem key={option} value={option}>{option}</SelectItem>
             ))}
           </SelectContent>
@@ -666,7 +666,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            {filterOptions['ATUALIZADOR 1(EMAIL)'].map(option => (
+            {filterOptions['ATUALIZADOR 1(EMAIL)']?.map(option => (
               <SelectItem key={option} value={option}>{option}</SelectItem>
             ))}
           </SelectContent>
