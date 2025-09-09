@@ -4,8 +4,8 @@ import type { SheetRow, Project } from '@/lib/types';
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwVAMAIp7RbVAzb3YGkIZq8Kr_HBEfFnx1iBa_981c4kb0bdmAJJAEhbHGZBPwwe1Hdpg/exec';
 
-// A lista de projetos agora será gerenciada no lado do cliente.
-// Esta é uma lista inicial padrão caso o localStorage esteja vazio.
+// This is now only a fallback for the very first load or if no ID is provided.
+// The primary project list is managed on the client in SpreadsheetManager.
 const defaultProjects: Project[] = [
   { name: 'PAREI v1.1 - GESTOR DE PARADAS', id: '1hs8LtsybSCLIsfO-4G-EtZpBrIzf339PeuhdjOU5UeI' },
 ];
@@ -91,7 +91,8 @@ async function getLogData(sheetId: string) {
 
 
 export default async function Home({ searchParams }: { searchParams?: { [key: string]: string | undefined } }) {
-  // O ID da planilha é passado pela URL, o servidor não precisa mais da lista completa.
+  // The server now only cares about the sheetId from the URL, or the default one.
+  // The full list of projects is managed on the client.
   const currentSheetId = searchParams?.sheetId || defaultProjects[0].id;
   
   const { headers, data, error } = await getSheetData(currentSheetId);

@@ -97,6 +97,7 @@ const ROWS_PER_PAGE = 15;
 const COLUMN_VISIBILITY_KEY = 'parei-column-visibility';
 const PROJECTS_STORAGE_KEY = 'parei-projects-list';
 
+// This is the default list ONLY if localStorage is empty.
 const defaultProjects: Project[] = [
   { name: 'PAREI v1.1 - GESTOR DE PARADAS', id: '1hs8LtsybSCLIsfO-4G-EtZpBrIzf339PeuhdjOU5UeI' },
 ];
@@ -211,9 +212,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const router = useRouter();
 
+  // All project management state is now handled on the client
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
   const [isAddProjectDialogOpen, setAddProjectDialogOpen] = useState(false);
-  const currentProject = useMemo(() => availableProjects.find(p => p.id === currentSheetId), [availableProjects, currentSheetId]);
+  
+  const currentProject = useMemo(() => {
+    return availableProjects.find(p => p.id === currentSheetId) || defaultProjects[0];
+  }, [availableProjects, currentSheetId]);
+
 
   const form = useForm<z.infer<typeof projectSchema>>({
     resolver: zodResolver(projectSchema),
@@ -223,12 +229,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     },
   });
 
+  // Load projects from localStorage on component mount
   useEffect(() => {
     try {
       const storedProjects = localStorage.getItem(PROJECTS_STORAGE_KEY);
       if (storedProjects) {
         setAvailableProjects(JSON.parse(storedProjects));
       } else {
+        // If no projects in storage, initialize with the default
         setAvailableProjects(defaultProjects);
         localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(defaultProjects));
       }
@@ -249,8 +257,15 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     });
     form.reset();
     setAddProjectDialogOpen(false);
-    // Navigate to the new project page
-    window.location.href = `/?sheetId=${newProject.id}`;
+    // Navigate to the new project page to load its data
+    router.push(`/?sheetId=${newProject.id}`);
+  };
+
+  const handleProjectChange = (projectId: string) => {
+    const selectedProject = availableProjects.find(p => p.id === projectId);
+    if (selectedProject) {
+        router.push(`/?sheetId=${encodeURIComponent(selectedProject.id)}`);
+    }
   };
 
   useEffect(() => {
@@ -692,13 +707,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     setCurrentPage(1);
   };
   
-  const handleProjectChange = (projectId: string) => {
-    const selectedProject = availableProjects.find(p => p.id === projectId);
-    if (selectedProject) {
-        window.location.href = `/?sheetId=${encodeURIComponent(selectedProject.id)}`;
-    }
-  };
-
 
   const handleAdvanceChange = (id: number, increment: boolean) => {
     let updatedRow: SheetRow | undefined;
@@ -1326,7 +1334,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                 <DialogClose asChild>
                                     <Button type="button" variant="secondary">Cancelar</Button>
                                 </DialogClose>
-                                <Button type="submit">Salvar e Carregar Projeto</Button>
+                                <Button type="submit">Salvar e Carregar</Button>
                             </DialogFooter>
                         </form>
                     </Form>
