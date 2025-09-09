@@ -479,7 +479,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const triggerSave = useCallback((dataToSave: SheetRow[]) => {
     startSaving(async () => {
-      const result = await saveDataToSheet(headers, dataToSave);
+      const result = await saveDataToSheet(reorderHeaders(initialHeaders), dataToSave);
       if (result.success) {
         toast({
           title: "Salvo!",
@@ -494,7 +494,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         });
       }
     });
-  }, [headers, toast]);
+  }, [initialHeaders, toast]);
 
 
   const handleAdvanceChange = (id: number, increment: boolean) => {
