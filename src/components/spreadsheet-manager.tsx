@@ -237,7 +237,9 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         const elapsedDuration = today.getTime() - startDate.getTime();
         
         let previsto = 0;
-        if (totalDuration > 0) {
+        if (today >= endDate) {
+          previsto = 100;
+        } else if (totalDuration > 0) {
           previsto = Math.max(0, Math.min(100, (elapsedDuration / totalDuration) * 100));
         } else if (today >= startDate) {
             previsto = 100;
