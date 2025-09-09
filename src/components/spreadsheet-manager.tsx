@@ -32,15 +32,6 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -228,17 +219,13 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [isAddProjectDialogOpen, setAddProjectDialogOpen] = useState(false);
   const [isLoadingProject, setIsLoadingProject] = useState(true);
   
-  const [projectToLoad, setProjectToLoad] = useState<Project | null>(null);
-  const [progress, setProgress] = useState(0);
-  
   useEffect(() => {
-     // This effect ensures we only show the content when the client-side
-     // state has been synchronized with the server-rendered data.
-    if (isLoadingProject && searchParams.get('sheetId') === currentSheetId) {
-        setIsLoadingProject(false);
+    // This effect ensures we only show the content when the client-side
+    // state has been synchronized with the server-rendered data.
+    if (searchParams.get('sheetId') === currentSheetId) {
+      setIsLoadingProject(false);
     }
-  }, [currentSheetId, searchParams, isLoadingProject]);
-
+  }, [currentSheetId, searchParams]);
 
   const currentProject = useMemo(() => {
     return availableProjects.find(p => p.id === currentSheetId) || null;
@@ -294,29 +281,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const handleProjectChange = (projectId: string) => {
     if (projectId === currentSheetId) return;
-    const selectedProject = availableProjects.find(p => p.id === projectId);
-    if (selectedProject) {
-        setProgress(0);
-        setProjectToLoad(selectedProject);
-    }
+    setIsLoadingProject(true); // Activate loading overlay immediately
+    router.push(`/?sheetId=${encodeURIComponent(projectId)}`);
   };
   
-  useEffect(() => {
-    if (projectToLoad) {
-        const timer = setTimeout(() => setProgress(100), 500);
-        return () => clearTimeout(timer);
-    }
-  }, [projectToLoad]);
-
-  const confirmProjectChange = () => {
-    if (projectToLoad) {
-      setIsLoadingProject(true); // Activate loading overlay
-      router.push(`/?sheetId=${encodeURIComponent(projectToLoad.id)}`);
-      setProjectToLoad(null);
-    }
-  };
-
-
   useEffect(() => {
     setLastUpdated(new Date().toLocaleString('pt-BR'));
   }, [allData]);
@@ -1463,27 +1431,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         </div>
         {renderContent()}
         
-        <AlertDialog open={!!projectToLoad} onOpenChange={(open) => !open && setProjectToLoad(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                <AlertDialogTitle>Seu projeto agora é:</AlertDialogTitle>
-                 <AlertDialogDescription className="text-primary font-bold text-lg pt-2">
-                    {projectToLoad?.name}
-                </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="space-y-2">
-                    <Progress value={progress} className="w-full" />
-                    <p className="text-xs text-muted-foreground text-center">Preparando para carregar os novos dados...</p>
-                </div>
-                <AlertDialogFooter>
-                    <AlertDialogAction onClick={confirmProjectChange} disabled={progress < 100}>
-                        {progress < 100 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Confirmar
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-
         {selectedOrder && (
             <Dialog open={!!selectedOrder} onOpenChange={(isOpen) => !isOpen && setSelectedOrder(null)}>
                 <DialogContent className="sm:max-w-[80vw] lg:max-w-[625px]">
