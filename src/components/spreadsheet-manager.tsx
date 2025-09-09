@@ -68,8 +68,52 @@ interface SpreadsheetManagerProps {
 const ROWS_PER_PAGE = 15;
 const COLUMN_VISIBILITY_KEY = 'parei-column-visibility';
 
+
+// Function to convert Excel serial number to JavaScript Date
+function excelSerialToDate(serial: number) {
+    if (typeof serial !== 'number' || isNaN(serial)) {
+        return null;
+    }
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    const date = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
+    if (isNaN(date.getTime())) {
+        return null;
+    }
+    return date;
+}
+
+function parseDate(value: any): Date | null {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    
+    if (typeof value === 'number') {
+        return excelSerialToDate(value);
+    }
+    
+    if (typeof value === 'string') {
+        // Try parsing dd/mm/yyyy
+        const parts = value.split('/');
+        if (parts.length === 3) {
+            const date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00Z`);
+            if (!isNaN(date.getTime())) return date;
+        }
+        // Try parsing ISO string
+        const isoDate = new Date(value);
+        if (!isNaN(isoDate.getTime())) return isoDate;
+    }
+
+    return null;
+}
+
 const reorderHeaders = (headers: string[]): string[] => {
     const newHeaders = [...headers];
+    if (!newHeaders.includes('PREVISTO')) {
+      newHeaders.push('PREVISTO');
+    }
+    if (!newHeaders.includes('DESVIO')) {
+      newHeaders.push('DESVIO');
+    }
+
     const avancoIndex = newHeaders.indexOf('AVANÇO');
     const nomeTarefaIndex = newHeaders.indexOf('NOME DA TAREFA');
 
@@ -80,45 +124,13 @@ const reorderHeaders = (headers: string[]): string[] => {
     return newHeaders;
 };
 
-// Function to convert Excel serial number to JavaScript Date
-function excelSerialToDate(serial: number) {
-    if (typeof serial !== 'number' || isNaN(serial)) {
-        return null;
-    }
-    // Excel's epoch starts on 1900-01-01, but it incorrectly thinks 1900 was a leap year.
-    // JavaScript's epoch is 1970-01-01.
-    // The number of days between 1900-01-01 and 1970-01-01 is 25569.
-    // We subtract 2 because of the leap year bug and the fact that Excel starts at day 1, not 0.
-    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-    const date = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
-    
-    // Check if the resulting date is valid
-    if (isNaN(date.getTime())) {
-        return null;
-    }
-    return date;
-}
-
 function formatDateValue(value: any): string {
-    if (typeof value === 'number') {
-        const date = excelSerialToDate(value);
-        if (date) {
-            const day = String(date.getUTCDate()).padStart(2, '0');
-            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-            const year = date.getUTCFullYear();
-            return `${day}/${month}/${year}`;
-        }
-    }
-    if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
-        try {
-            const date = new Date(value);
-            const day = String(date.getUTCDate()).padStart(2, '0');
-            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-            const year = date.getUTCFullYear();
-            return `${day}/${month}/${year}`;
-        } catch (e) {
-            // Not a valid date string, return as is
-        }
+    const date = parseDate(value);
+    if (date) {
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const year = date.getUTCFullYear();
+        return `${day}/${month}/${year}`;
     }
     return String(value || '-');
 }
@@ -210,15 +222,43 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const processedData = useMemo(() => {
     let dataToProcess = JSON.parse(JSON.stringify(allData));
     const orderGroups: Record<string, SheetRow[]> = {};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); 
 
     dataToProcess.forEach((row: SheetRow) => {
-        const order = String(row['ORDEM'] || '');
-        if (order) {
-            if (!orderGroups[order]) {
-                orderGroups[order] = [];
-            }
-            orderGroups[order].push(row);
+      // Calculate PREVISTO and DESVIO
+      const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
+      const endDate = parseDate(row['TÉRMINO DA LINHA DE BASE']);
+      
+      if (startDate && endDate && startDate <= endDate && String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
+        const totalDuration = endDate.getTime() - startDate.getTime();
+        const elapsedDuration = today.getTime() - startDate.getTime();
+        
+        let previsto = 0;
+        if (totalDuration > 0) {
+          previsto = Math.max(0, Math.min(100, (elapsedDuration / totalDuration) * 100));
+        } else if (today >= startDate) {
+            previsto = 100;
         }
+
+        row['PREVISTO'] = `${Math.round(previsto)}%`;
+        
+        const avanco = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
+        const desvio = avanco - previsto;
+        row['DESVIO'] = `${Math.round(desvio)}%`;
+
+      } else {
+        row['PREVISTO'] = '-';
+        row['DESVIO'] = '-';
+      }
+
+      const order = String(row['ORDEM'] || '');
+      if (order) {
+          if (!orderGroups[order]) {
+              orderGroups[order] = [];
+          }
+          orderGroups[order].push(row);
+      }
     });
 
     Object.values(orderGroups).forEach(group => {
@@ -711,6 +751,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                                 </Button>
                               </div>
                             );
+                        } else if (header === 'DESVIO') {
+                            const desvioValue = parseFloat(String(row.DESVIO).replace('%', ''));
+                            const colorClass = desvioValue < 0 ? 'text-red-500' : desvioValue > 0 ? 'text-green-500' : 'text-gray-500';
+                            cellContent = <span className={cn('font-bold', colorClass)}>{row.DESVIO}</span>;
                         } else {
                             cellContent = String(row[header] || '-');
                         }
