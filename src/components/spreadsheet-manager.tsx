@@ -1368,14 +1368,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       >
           <AreaChart className="mr-2 h-4 w-4" /> PROGRESSO
       </Button>
-      <Button 
-        variant={currentView === 'daily-log-chart' ? 'default' : 'outline'}
-        size="sm" 
-        onClick={() => setCurrentView('daily-log-chart')} 
-        className="border-primary/50 uppercase"
-      >
-          <History className="mr-2 h-4 w-4" /> LOG DIÁRIO
-      </Button>
     </>
   );
 
@@ -1390,7 +1382,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       )}
       <CardHeader className="p-4">
         <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-start gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="border-primary/50 uppercase">
                         <RotateCw className="mr-2 h-4 w-4" /> ATUALIZAR
@@ -1406,65 +1398,97 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                        <ViewButtons />
                     </div>
                 </div>
-                 <div className="ml-auto flex items-center gap-2">
-                    <div className="flex flex-col gap-2">
-                        <Dialog open={isAddProjectDialogOpen} onOpenChange={setAddProjectDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button variant="outline" className="border-primary/50 uppercase h-9">
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    ADICIONAR
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-[425px]">
-                                <DialogHeader>
-                                    <DialogTitle>Adicionar Novo Projeto</DialogTitle>
-                                    <DialogDescription>
-                                        Insira o nome do projeto e o ID da planilha Google Sheets para carregá-lo.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <Form {...form}>
-                                    <form onSubmit={form.handleSubmit(handleAddProject)} className="space-y-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="name"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Nome do Projeto</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="Ex: Manutenção Preventiva 2025" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="id"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>ID da Planilha Google</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="Cole o ID da sua planilha aqui" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <DialogFooter>
-                                            <DialogClose asChild>
-                                                <Button type="button" variant="secondary">Cancelar</Button>
-                                            </DialogClose>
-                                            <Button type="submit">Salvar e Carregar</Button>
-                                        </DialogFooter>
-                                    </form>
-                                </Form>
-                            </DialogContent>
-                        </Dialog>
-                        <Button variant="outline" className="border-primary/50 uppercase h-9" onClick={handleDownloadTemplate}>
-                            <FileSpreadsheet className="mr-2 h-4 w-4" />
-                            TEMPLATE
-                        </Button>
-                    </div>
+                 <div className="flex items-center gap-2">
+                    <Dialog open={isAddProjectDialogOpen} onOpenChange={setAddProjectDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="border-primary/50 uppercase h-9">
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                ADICIONAR
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>Adicionar Novo Projeto</DialogTitle>
+                                <DialogDescription>
+                                    Insira o nome do projeto e o ID da planilha Google Sheets para carregá-lo.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(handleAddProject)} className="space-y-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="name"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Nome do Projeto</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Ex: Manutenção Preventiva 2025" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="id"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>ID da Planilha Google</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Cole o ID da sua planilha aqui" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <DialogFooter>
+                                        <DialogClose asChild>
+                                            <Button type="button" variant="secondary">Cancelar</Button>
+                                        </DialogClose>
+                                        <Button type="submit">Salvar e Carregar</Button>
+                                    </DialogFooter>
+                                </form>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
+                    <Button variant="outline" size="sm" className="border-primary/50 uppercase h-9" onClick={handleDownloadTemplate}>
+                        <FileSpreadsheet className="mr-2 h-4 w-4" />
+                        TEMPLATE
+                    </Button>
+                     <Button 
+                        variant={currentView === 'daily-log-chart' ? 'default' : 'outline'}
+                        size="sm" 
+                        onClick={() => setCurrentView('daily-log-chart')} 
+                        className="border-primary/50 uppercase"
+                      >
+                          <History className="mr-2 h-4 w-4" /> LOG DIÁRIO
+                      </Button>
+                     <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="border-primary/50 uppercase h-9"><Columns className="mr-2 h-4 w-4" /> COLUNAS</Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-64">
+                        <DropdownMenuLabel>Exibir/Ocultar Colunas</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <ScrollArea className="h-72">
+                            <div className="p-2">
+                            {headers.map((header) => (
+                                <DropdownMenuCheckboxItem
+                                key={header}
+                                className="capitalize"
+                                checked={columnVisibility[header] ?? true}
+                                onCheckedChange={(value) =>
+                                    setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                                >
+                                {header}
+                                </DropdownMenuCheckboxItem>
+                            ))}
+                            </div>
+                        </ScrollArea>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <div className={cn("hidden sm:flex items-center gap-2 text-sm font-semibold", onlineStatus ? 'text-green-600' : 'text-red-600')}>
                         {onlineStatus ? <Wifi className="h-4 w-4"/> : <WifiOff className="h-4 w-4" />}
                         <span>{onlineStatus ? 'Online' : 'Offline'}</span>
@@ -1505,32 +1529,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                         </Button>
                     )}
                 </div>
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="border-primary/50 uppercase h-9"><Columns className="mr-2 h-4 w-4" /> COLUNAS</Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-64">
-                    <DropdownMenuLabel>Exibir/Ocultar Colunas</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <ScrollArea className="h-72">
-                        <div className="p-2">
-                        {headers.map((header) => (
-                            <DropdownMenuCheckboxItem
-                            key={header}
-                            className="capitalize"
-                            checked={columnVisibility[header] ?? true}
-                            onCheckedChange={(value) =>
-                                setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
-                            }
-                            onSelect={(e) => e.preventDefault()}
-                            >
-                            {header}
-                            </DropdownMenuCheckboxItem>
-                        ))}
-                        </div>
-                    </ScrollArea>
-                    </DropdownMenuContent>
-                </DropdownMenu>
             </div>
         </div>
       </CardHeader>
