@@ -361,7 +361,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   useEffect(() => {
     if (currentSheetId) {
         const currentProjectExists = availableProjects.some(p => p.id === currentSheetId);
-        if (isLoadingProject && currentProjectExists) {
+        if (!isLoadingProject && currentProjectExists) {
              setIsLoadingProject(false);
         }
     }
@@ -1110,17 +1110,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       )}
     </>
   );
-
-  if (isLoadingProject) {
-     return (
-        <Card className="border-0 shadow-none sm:border sm:shadow-sm bg-transparent relative h-[80vh] flex items-center justify-center">
-            <div className="flex flex-col items-center justify-center z-50">
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="mt-4 text-lg font-semibold text-primary">Carregando projeto...</p>
-            </div>
-        </Card>
-     )
-  }
 
   if (error && allData.length === 0) {
     return (
