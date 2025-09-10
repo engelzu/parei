@@ -750,22 +750,22 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       return { dailyLogChartData: [], dailyLogChartKeys: [] };
     }
 
-    const taskToAreaMap: Record<string, string> = {};
+    const taskToAeraMap: Record<string, string> = {};
     const allTaskIds = new Set<string>();
     allData.forEach(row => {
       if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não' && row.id) {
         const taskId = String(row.id);
-        taskToAreaMap[taskId] = String(row['ÁREA'] || 'N/A');
+        taskToAeraMap[taskId] = String(row['ÁREA'] || 'N/A');
         allTaskIds.add(taskId);
       }
     });
     
-    const allAreas = Array.from(new Set(Object.values(taskToAreaMap))).sort();
+    const allAreas = Array.from(new Set(Object.values(taskToAeraMap))).sort();
 
     const logsByDate: Record<string, { taskId: string; progress: number }[]> = {};
     logData.forEach(log => {
       const taskId = String(log.ID_TAREFA);
-      if (taskToAreaMap[taskId]) { 
+      if (taskToAeraMap[taskId]) { 
         try {
           const timestamp = new Date(log.TIMESTAMP);
           if (isNaN(timestamp.getTime())) return;
@@ -779,7 +779,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             taskId,
             progress: parseFloat(String(log.AVANCO_PERCENTUAL)),
           });
-        } catch (e) { /* Ignore malformed logs */ }
+        } catch (e) { /* ignore malformed logs */ }
       }
     });
     
@@ -807,7 +807,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       });
 
       allTaskIds.forEach(taskId => {
-        const area = taskToAreaMap[taskId];
+        const area = taskToAeraMap[taskId];
         if (area) { 
           progressByArea[area].total += currentTaskProgress[taskId] || 0;
           progressByArea[area].count++;
@@ -900,7 +900,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
           } else {
               toast({
                   variant: "destructive",
-                  title: "Erro no Salvamento Automático",
+                  title: "Erro no salvamento automático",
                   description: result.message,
               });
               // Reverte a alteração otimista em caso de erro
@@ -954,7 +954,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         } else {
             toast({
                 variant: "destructive",
-                title: "Erro ao Salvar",
+                title: "Erro ao salvar",
                 description: result.message || 'Ocorreu um erro desconhecido ao salvar os dados.',
             });
         }
@@ -962,10 +962,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   };
 
   const handleDownloadTemplate = () => {
-    const templateLink = "https://docs.google.com/spreadsheets/d/1ZiwhG9yHXxHh3AgVquWahV9CGKuCgTieIQBEfK5LmzI/copy";
+    const templateLink = "https://docs.google.com/spreadsheets/d/1ZiWhG9YHXXHH3AgvqUwaHV9CGkUCGTieiQbefK5lMZI/copy";
     toast({
       title: "Copiando Template...",
-      description: "FAÇA UMA CÓPIA para seu PROJETO e de um NOME a nova PLANILHA.",
+      description: "Faça uma cópia para seu projeto e dê um nome à nova planilha.",
     });
     window.open(templateLink, '_blank');
   };
@@ -1021,7 +1021,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             }}
           >
             <SelectTrigger className="w-full mt-1 h-9 rounded-md">
-              <SelectValue placeholder="Selecionar Tipo" />
+              <SelectValue placeholder="Selecionar tipo" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos (Sim e Não)</SelectItem>
@@ -1056,7 +1056,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
           onValueChange={(value) => handleFilterChange('ÁREA', value)}
         >
           <SelectTrigger className="w-full mt-1 h-9 rounded-md">
-            <SelectValue placeholder="Selecionar ÁREA" />
+            <SelectValue placeholder="Selecionar Área" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
@@ -1073,7 +1073,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
           onValueChange={(value) => handleFilterChange('RESPONSÁVEL', value)}
         >
           <SelectTrigger className="w-full mt-1 h-9 rounded-md">
-            <SelectValue placeholder="Selecionar RESPONSÁVEL" />
+            <SelectValue placeholder="Selecionar Responsável" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
@@ -1095,7 +1095,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
           onValueChange={(value) => handleFilterChange('ATUALIZADOR 1(EMAIL)', value)}
         >
           <SelectTrigger className="w-full mt-1 h-9 rounded-md">
-            <SelectValue placeholder="Selecionar ATUALIZADOR 1" />
+            <SelectValue placeholder="Selecionar Atualizador 1" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
@@ -1120,11 +1120,11 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         <CardContent>
             <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Erro ao Carregar Dados</AlertTitle>
+                <AlertTitle>Erro ao carregar dados</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
             </Alert>
              <div className="mt-4">
-              <Label className="text-xs font-medium text-primary">SELECIONAR PROJETO</Label>
+              <Label className="text-xs font-medium text-primary">Selecionar Projeto</Label>
                <Select onValueChange={handleProjectChange} value={currentSheetId || ''}>
                 <SelectTrigger className="w-full mt-1 h-9 rounded-md">
                     <SelectValue placeholder="Selecione um projeto" />
@@ -1206,13 +1206,13 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                             } else if (header === 'ORDEM') {
                                 const orderValue = String(row[header] || '-');
                                 cellContent = (
-                                  <button
+                                  <Button
                                     className="text-blue-600 underline disabled:text-muted-foreground disabled:no-underline"
                                     onClick={() => handleOrderClick(orderValue)}
                                     disabled={orderValue === '-'}
                                   >
                                     {orderValue}
-                                  </button>
+                                  </Button>
                                 );
                             } else if (header === 'DESVIO') {
                                 const desvioValue = parseFloat(String(row.DESVIO).replace('%', ''));
@@ -1395,7 +1395,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                   <RotateCw className="mr-2 h-4 w-4" /> ATUALIZAR
               </Button>
               <div className="flex items-center justify-center p-2 bg-primary text-primary-foreground rounded-md text-sm font-medium uppercase h-9">
-                IDs: {filteredData.length}
+                IDS: {filteredData.length}
               </div>
                <Button size="sm" onClick={handleManualSave} disabled={isSaving || isAutoSaving} className="uppercase">
                   {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : isAutoSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -1408,7 +1408,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="border-primary/50 uppercase"><Columns className="mr-2 h-4 w-4" /> Colunas</Button>
+                  <Button variant="outline" size="sm" className="border-primary/50 uppercase"><Columns className="mr-2 h-4 w-4" /> COLUNAS</Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64">
                   <DropdownMenuLabel>Exibir/Ocultar Colunas</DropdownMenuLabel>
@@ -1434,21 +1434,17 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
               </DropdownMenu>
                <div className={cn("flex items-center gap-2 text-sm font-semibold ml-auto", onlineStatus ? 'text-green-600' : 'text-red-600')}>
                     {onlineStatus ? <Wifi className="h-4 w-4"/> : <WifiOff className="h-4 w-4" />}
-                    <span>{onlineStatus ? 'ONLINE' : 'OFFLINE'}</span>
+                    <span>{onlineStatus ? 'Online' : 'Offline'}</span>
                 </div>
-          </div>
-          <div className="w-full">
-            <CardTitle className="text-2xl font-bold text-primary">{currentProject?.name || 'Carregando Projeto...'}</CardTitle>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col md:flex-row flex-wrap items-end gap-2 mb-4">
             <div className="flex-1 min-w-[200px]">
-                <Label className="text-xs font-medium text-primary">SELECIONAR PROJETO</Label>
                 <Select onValueChange={handleProjectChange} value={currentSheetId || ''} disabled={isLoadingProject}>
-                <SelectTrigger className="w-full mt-1 h-9 rounded-md">
-                    <SelectValue placeholder="Selecione um projeto" />
+                <SelectTrigger className="w-full h-9 rounded-md">
+                    <SelectValue placeholder={currentProject?.name || 'Selecione um Projeto'} />
                 </SelectTrigger>
                 <SelectContent>
                     {availableProjects.map((proj) => (
@@ -1463,14 +1459,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 <DialogTrigger asChild>
                     <Button variant="outline" className="border-primary/50 uppercase h-9">
                         <PlusCircle className="mr-2 h-4 w-4" />
-                        Adicionar
+                        ADICIONAR
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>Adicionar Novo Projeto</DialogTitle>
                         <DialogDescription>
-                            Insira o nome do projeto e o ID da Planilha Google Sheets para carregá-lo.
+                            Insira o nome do projeto e o ID da planilha Google Sheets para carregá-lo.
                         </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
@@ -1513,11 +1509,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             </Dialog>
             <Button variant="outline" className="border-primary/50 uppercase h-9" onClick={handleDownloadTemplate}>
                 <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Template
+                TEMPLATE
             </Button>
              <div className="relative flex-1 min-w-[200px]">
-                <Label className="text-xs font-medium text-primary">PESQUISAR</Label>
-                <Search className="absolute left-3 top-1/2 mt-1.5 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -mt-2 h-4 w-4 text-muted-foreground" />
                 <Input
                     placeholder="Pesquisar em toda a base..."
                     value={searchTerm}
@@ -1525,10 +1520,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                       setSearchTerm(e.target.value)
                       setCurrentPage(1)
                     }}
-                    className="pl-10 pr-10 w-full h-9 rounded-md bg-card mt-1"
+                    className="pl-10 pr-10 w-full h-9 rounded-md bg-card"
                 />
                 {searchTerm && (
-                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 h-7 w-7 mt-0.5" onClick={() => setSearchTerm('')}>
+                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 h-7 w-7 -mt-3.5" onClick={() => setSearchTerm('')}>
                         <X className="h-4 w-4" />
                     </Button>
                 )}
@@ -1548,7 +1543,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                             <div className="space-y-2">
                                 <Button variant="outline" size="sm" onClick={clearFilters} className="w-full border-primary/50 uppercase">
                                     <Eraser className="mr-2 h-4 w-4" />
-                                    Limpar Filtros
+                                    LIMPAR FILTROS
                                 </Button>
                                 <FilterControls inSheet={true} />
                             </div>
@@ -1575,7 +1570,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         <div className="hidden md:flex flex-wrap items-end gap-4 mb-4 relative">
             <Button variant="outline" size="sm" onClick={clearFilters} className="border-primary/50 uppercase">
                 <Eraser className="mr-2 h-4 w-4" />
-                Limpar Filtros
+                LIMPAR FILTROS
             </Button>
             <FilterControls />
         </div>
