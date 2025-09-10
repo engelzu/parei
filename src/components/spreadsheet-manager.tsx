@@ -1390,55 +1390,90 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       )}
       <CardHeader className="p-4">
         <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="border-primary/50 uppercase">
-                    <RotateCw className="mr-2 h-4 w-4" /> ATUALIZAR
-                </Button>
-                <div className="flex items-center justify-center p-2 bg-primary text-primary-foreground rounded-md text-sm font-medium uppercase h-9">
-                    IDS: {filteredData.length}
-                </div>
-                 <Button size="sm" onClick={handleManualSave} disabled={isSaving || isAutoSaving} className="uppercase">
-                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : isAutoSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    {isAutoSaving ? 'SALVANDO...' : 'SALVAR'}
-                </Button>
-                <div className="hidden md:flex flex-wrap items-center gap-2">
-                    <ViewButtons />
+            <div className="flex flex-wrap items-start gap-4">
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="border-primary/50 uppercase">
+                        <RotateCw className="mr-2 h-4 w-4" /> ATUALIZAR
+                    </Button>
+                    <div className="flex items-center justify-center p-2 bg-primary text-primary-foreground rounded-md text-sm font-medium uppercase h-9">
+                        IDS: {filteredData.length}
+                    </div>
+                    <Button size="sm" onClick={handleManualSave} disabled={isSaving || isAutoSaving} className="uppercase">
+                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : isAutoSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        {isAutoSaving ? 'SALVANDO...' : 'SALVAR'}
+                    </Button>
+                    <div className="hidden md:flex flex-wrap items-center gap-2">
+                       <ViewButtons />
+                    </div>
                 </div>
                  <div className="ml-auto flex items-center gap-2">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="border-primary/50 uppercase"><Columns className="mr-2 h-4 w-4" /> COLUNAS</Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-64">
-                        <DropdownMenuLabel>Exibir/Ocultar Colunas</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <ScrollArea className="h-72">
-                            <div className="p-2">
-                            {headers.map((header) => (
-                                <DropdownMenuCheckboxItem
-                                key={header}
-                                className="capitalize"
-                                checked={columnVisibility[header] ?? true}
-                                onCheckedChange={(value) =>
-                                    setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
-                                }
-                                onSelect={(e) => e.preventDefault()}
-                                >
-                                {header}
-                                </DropdownMenuCheckboxItem>
-                            ))}
-                            </div>
-                        </ScrollArea>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex flex-col gap-2">
+                        <Dialog open={isAddProjectDialogOpen} onOpenChange={setAddProjectDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" className="border-primary/50 uppercase h-9">
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    ADICIONAR
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                                <DialogHeader>
+                                    <DialogTitle>Adicionar Novo Projeto</DialogTitle>
+                                    <DialogDescription>
+                                        Insira o nome do projeto e o ID da planilha Google Sheets para carregá-lo.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <Form {...form}>
+                                    <form onSubmit={form.handleSubmit(handleAddProject)} className="space-y-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="name"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Nome do Projeto</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="Ex: Manutenção Preventiva 2025" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="id"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>ID da Planilha Google</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="Cole o ID da sua planilha aqui" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <DialogFooter>
+                                            <DialogClose asChild>
+                                                <Button type="button" variant="secondary">Cancelar</Button>
+                                            </DialogClose>
+                                            <Button type="submit">Salvar e Carregar</Button>
+                                        </DialogFooter>
+                                    </form>
+                                </Form>
+                            </DialogContent>
+                        </Dialog>
+                        <Button variant="outline" className="border-primary/50 uppercase h-9" onClick={handleDownloadTemplate}>
+                            <FileSpreadsheet className="mr-2 h-4 w-4" />
+                            TEMPLATE
+                        </Button>
+                    </div>
                     <div className={cn("hidden sm:flex items-center gap-2 text-sm font-semibold", onlineStatus ? 'text-green-600' : 'text-red-600')}>
                         {onlineStatus ? <Wifi className="h-4 w-4"/> : <WifiOff className="h-4 w-4" />}
                         <span>{onlineStatus ? 'Online' : 'Offline'}</span>
                     </div>
                 </div>
             </div>
-             <div className="flex flex-wrap items-end gap-2">
-                <div className="flex-1">
+
+            <div className="flex flex-wrap items-end gap-4 w-full">
+                <div className="flex-1 min-w-[200px]">
                      <Select onValueChange={handleProjectChange} value={currentSheetId || ''} disabled={isLoadingProject}>
                         <SelectTrigger className="w-full h-9 rounded-md">
                             <SelectValue placeholder={currentProject?.name || 'Selecione um Projeto'} />
@@ -1452,62 +1487,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                         </SelectContent>
                     </Select>
                 </div>
-                <Dialog open={isAddProjectDialogOpen} onOpenChange={setAddProjectDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button variant="outline" className="border-primary/50 uppercase h-9">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            ADICIONAR
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                            <DialogTitle>Adicionar Novo Projeto</DialogTitle>
-                            <DialogDescription>
-                                Insira o nome do projeto e o ID da planilha Google Sheets para carregá-lo.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(handleAddProject)} className="space-y-4">
-                                <FormField
-                                    control={form.control}
-                                    name="name"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Nome do Projeto</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="Ex: Manutenção Preventiva 2025" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="id"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>ID da Planilha Google</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="Cole o ID da sua planilha aqui" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <DialogFooter>
-                                    <DialogClose asChild>
-                                        <Button type="button" variant="secondary">Cancelar</Button>
-                                    </DialogClose>
-                                    <Button type="submit">Salvar e Carregar</Button>
-                                </DialogFooter>
-                            </form>
-                        </Form>
-                    </DialogContent>
-                </Dialog>
-                <Button variant="outline" className="border-primary/50 uppercase h-9" onClick={handleDownloadTemplate}>
-                    <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    TEMPLATE
-                </Button>
+                
                 <div className="relative flex-1 min-w-[200px]">
                     <Search className="absolute left-3 top-1/2 -mt-2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -1525,6 +1505,32 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                         </Button>
                     )}
                 </div>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="border-primary/50 uppercase h-9"><Columns className="mr-2 h-4 w-4" /> COLUNAS</Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuLabel>Exibir/Ocultar Colunas</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <ScrollArea className="h-72">
+                        <div className="p-2">
+                        {headers.map((header) => (
+                            <DropdownMenuCheckboxItem
+                            key={header}
+                            className="capitalize"
+                            checked={columnVisibility[header] ?? true}
+                            onCheckedChange={(value) =>
+                                setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
+                            }
+                            onSelect={(e) => e.preventDefault()}
+                            >
+                            {header}
+                            </DropdownMenuCheckboxItem>
+                        ))}
+                        </div>
+                    </ScrollArea>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
         </div>
       </CardHeader>
