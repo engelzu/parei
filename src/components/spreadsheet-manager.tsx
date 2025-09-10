@@ -99,7 +99,7 @@ import { ProgressChart, type ChartData } from '@/components/progress-chart';
 import { PlannedRealizedChart, type LineChartData } from '@/components/line-chart';
 import { AreaProgressChart, type AreaProgressChartData } from '@/components/area-progress-chart';
 import { DailyProgressChart, type DailyProgressChartData } from '@/components/daily-progress-chart';
-import { getProjects, saveProjects, getSheetData, getHeaders, getLogData, saveSheetData, saveHeaders, saveLogData } from '@/lib/db';
+import { getProjects, saveProjects, getSheetData, getHeaders, getLogData, saveSheetData, saveHeaders, saveLogData, addRowToUpdateQueue } from '@/lib/db';
 
 
 interface SpreadsheetManagerProps {
@@ -349,11 +349,21 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     handleProjectChange(newProject.id);
   };
 
- const handleProjectChange = (projectId: string) => {
-    if (projectId === currentSheetId) return;
-    setIsLoadingProject(true); 
-    router.push(`/?sheetId=${encodeURIComponent(projectId)}`);
+  const handleProjectChange = (projectId: string) => {
+      if (projectId === currentSheetId) return;
+      setIsLoadingProject(true);
+      router.push(`/?sheetId=${encodeURIComponent(projectId)}`);
   };
+
+   useEffect(() => {
+        setAllData(initialData);
+        setSearchTerm('');
+        setActiveFilters({ 'ÁREA': [], 'RESPONSÁVEL': [], 'ATUALIZADOR 1(EMAIL)': [] });
+        setResumoFilter('all');
+        setCaminhoCriticoFilter('all');
+        setCurrentPage(1);
+    }, [initialData]);
+
   
   useEffect(() => {
     setLastUpdated(new Date().toLocaleString('pt-BR'));
@@ -791,19 +801,28 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     });
 
     if (updatedRow) {
-        setIsAutoSaving(true);
-        startSaving(async () => {
-            const result = await saveSingleRow(currentSheetId, updatedRow!);
-            if (!result.success) {
-                toast({
-                    variant: "destructive",
-                    title: "Erro no Salvamento Automático",
-                    description: result.message,
-                });
-                setAllData(initialData); 
-            }
-             setIsAutoSaving(false);
+      if (!onlineStatus) {
+        addRowToUpdateQueue(currentSheetId, updatedRow);
+        toast({
+          title: "Salvo Offline",
+          description: "A alteração será sincronizada quando houver conexão.",
         });
+        return;
+      }
+      
+      setIsAutoSaving(true);
+      startSaving(async () => {
+          const result = await saveSingleRow(currentSheetId, updatedRow!);
+          if (!result.success) {
+              toast({
+                  variant: "destructive",
+                  title: "Erro no Salvamento Automático",
+                  description: result.message,
+              });
+              setAllData(initialData); 
+          }
+           setIsAutoSaving(false);
+      });
     }
   };
 
