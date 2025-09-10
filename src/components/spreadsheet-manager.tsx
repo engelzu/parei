@@ -1404,39 +1404,41 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 <div className="hidden md:flex flex-wrap items-center gap-2">
                     <ViewButtons />
                 </div>
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="border-primary/50 uppercase"><Columns className="mr-2 h-4 w-4" /> COLUNAS</Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-64">
-                    <DropdownMenuLabel>Exibir/Ocultar Colunas</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <ScrollArea className="h-72">
-                        <div className="p-2">
-                        {headers.map((header) => (
-                            <DropdownMenuCheckboxItem
-                            key={header}
-                            className="capitalize"
-                            checked={columnVisibility[header] ?? true}
-                            onCheckedChange={(value) =>
-                                setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
-                            }
-                            onSelect={(e) => e.preventDefault()}
-                            >
-                            {header}
-                            </DropdownMenuCheckboxItem>
-                        ))}
-                        </div>
-                    </ScrollArea>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                <div className={cn("flex items-center gap-2 text-sm font-semibold ml-auto", onlineStatus ? 'text-green-600' : 'text-red-600')}>
-                    {onlineStatus ? <Wifi className="h-4 w-4"/> : <WifiOff className="h-4 w-4" />}
-                    <span>{onlineStatus ? 'Online' : 'Offline'}</span>
+                 <div className="ml-auto flex items-center gap-2">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="border-primary/50 uppercase"><Columns className="mr-2 h-4 w-4" /> COLUNAS</Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-64">
+                        <DropdownMenuLabel>Exibir/Ocultar Colunas</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <ScrollArea className="h-72">
+                            <div className="p-2">
+                            {headers.map((header) => (
+                                <DropdownMenuCheckboxItem
+                                key={header}
+                                className="capitalize"
+                                checked={columnVisibility[header] ?? true}
+                                onCheckedChange={(value) =>
+                                    setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
+                                }
+                                onSelect={(e) => e.preventDefault()}
+                                >
+                                {header}
+                                </DropdownMenuCheckboxItem>
+                            ))}
+                            </div>
+                        </ScrollArea>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <div className={cn("hidden sm:flex items-center gap-2 text-sm font-semibold", onlineStatus ? 'text-green-600' : 'text-red-600')}>
+                        {onlineStatus ? <Wifi className="h-4 w-4"/> : <WifiOff className="h-4 w-4" />}
+                        <span>{onlineStatus ? 'Online' : 'Offline'}</span>
+                    </div>
                 </div>
             </div>
              <div className="flex flex-wrap items-end gap-2">
-                <div className="flex-1 min-w-[200px]">
+                <div className="flex-1">
                      <Select onValueChange={handleProjectChange} value={currentSheetId || ''} disabled={isLoadingProject}>
                         <SelectTrigger className="w-full h-9 rounded-md">
                             <SelectValue placeholder={currentProject?.name || 'Selecione um Projeto'} />
@@ -1506,7 +1508,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
                     TEMPLATE
                 </Button>
-                <div className="relative flex-1 min-w-[200px] ml-auto">
+                <div className="relative flex-1 min-w-[200px]">
                     <Search className="absolute left-3 top-1/2 -mt-2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Pesquisar em toda a base..."
