@@ -1443,7 +1443,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-wrap items-end gap-2 mb-4">
+        <div className="flex flex-col md:flex-row flex-wrap items-end gap-2 mb-4">
             <div className="flex-1 min-w-[200px]">
                 <Label className="text-xs font-medium text-primary">SELECIONAR PROJETO</Label>
                 <Select onValueChange={handleProjectChange} value={currentSheetId || ''} disabled={isLoadingProject}>
