@@ -15,14 +15,16 @@ export async function saveDataToSheet(sheetId: string, headers: string[], allDat
 
   try {
     // Para salvamento de múltiplas linhas (botão Salvar)
-    const values = allData.map(row => 
-      headers.map(header => {
-        let value = header === 'AVANÇO' 
-          ? String(row[header] || '0').replace('%', '') 
-          : row[header] || '';
-        return String(value).trim();
-      })
-    );
+    // Enviamos apenas as linhas que foram alteradas
+    const values = updatedRows.map(row => {
+      const rowData: { [key: string]: string } = { id: String(row.id) };
+      headers.forEach(header => {
+         if (header === 'AVANÇO') {
+            rowData[header] = String(row[header] || '0').replace('%', '');
+         }
+      });
+      return rowData;
+    });
 
     const logData = updatedRows.map(row => ({
       'ID': row['id'],
@@ -30,10 +32,9 @@ export async function saveDataToSheet(sheetId: string, headers: string[], allDat
     }));
 
     const payload = {
-      action: 'saveData',
+      action: 'saveData', // A Apps Script deve saber como lidar com 'saveData' para múltiplas linhas
       sheetId: sheetId,
-      values: JSON.stringify(values),
-      headers: JSON.stringify(headers),
+      updates: JSON.stringify(values), // Enviando apenas as atualizações
       logData: JSON.stringify(logData)
     };
     

@@ -433,6 +433,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         setResumoFilter('all');
         setCaminhoCriticoFilter('all');
         setCurrentPage(1);
+        setUpdatedRows([]);
     }, [initialData]);
 
   
@@ -864,6 +865,13 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 const newValue = increment ? Math.min(100, current + 5) : Math.max(0, current - 5);
                 const newRow = { ...row, 'AVANÇO': `${newValue}%` };
                 updatedRow = newRow;
+                
+                // Adiciona a linha alterada à lista de updatedRows
+                setUpdatedRows(prev => {
+                    const otherRows = prev.filter(r => r.id !== id);
+                    return [...otherRows, newRow];
+                });
+
                 return newRow;
             }
             return row;
@@ -890,6 +898,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
               description: "Avanço salvo com sucesso.",
               duration: 2000,
             });
+            setUpdatedRows(prev => prev.filter(r => r.id !== id));
           } else {
               toast({
                   variant: "destructive",
@@ -905,6 +914,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                   }
                   return revertedData;
               });
+              setUpdatedRows(prev => prev.filter(r => r.id !== id));
           }
            setIsAutoSaving(false);
       });
@@ -926,8 +936,15 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       });
       return;
     }
+     if (updatedRows.length === 0) {
+      toast({
+        title: "Nenhuma alteração para salvar",
+        description: "Modifique o avanço de alguma tarefa para poder salvar.",
+      });
+      return;
+    }
     startSaving(async () => {
-        const result = await saveDataToSheet(currentSheetId, initialHeaders, allData, updatedRows);
+        const result = await saveDataToSheet(currentSheetId, headers, allData, updatedRows);
         if (result.success) {
             setUpdatedRows([]); 
             toast({
