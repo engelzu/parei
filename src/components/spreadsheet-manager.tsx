@@ -32,7 +32,7 @@ import {
   AlertDialogTrigger,
   AlertDialogFooter,
   AlertDialogAction,
-  AlertDialogClose,
+  AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import {
   Dialog,
@@ -99,23 +99,22 @@ import { ProgressChart, type ChartData } from '@/components/progress-chart';
 import { PlannedRealizedChart, type LineChartData } from '@/components/line-chart';
 import { AreaProgressChart, type AreaProgressChartData } from '@/components/area-progress-chart';
 import { DailyProgressChart, type DailyProgressChartData } from '@/components/daily-progress-chart';
-import { getProjects, saveProjects } from '@/lib/db';
+import { getProjects, saveProjects, getSheetData, getHeaders, getLogData, saveSheetData, saveHeaders, saveLogData } from '@/lib/db';
 
 
 interface SpreadsheetManagerProps {
   initialData: SheetRow[];
   initialHeaders: string[];
   initialError: string | null;
-  initialLogData?: any[];
+  initialLogData: any[];
+  initialLogDataError: string | null;
   currentSheetId: string;
-  isOnline: boolean;
 }
 
 const ROWS_PER_PAGE = 15;
 const COLUMN_VISIBILITY_KEY = 'parei-column-visibility';
 const PROJECTS_STORAGE_KEY = 'parei-projects-list';
 
-// This is the default list ONLY if localStorage is empty.
 const defaultProjects: Project[] = [
   { name: 'PAREI v1.1 - GESTOR DE PARADAS', id: '1hs8LtsybSCLIsfO-4G-EtZpBrIzf339PeuhdjOU5UeI' },
 ];
@@ -125,8 +124,6 @@ const projectSchema = z.object({
   id: z.string().min(20, { message: "O ID da planilha parece inválido. Verifique o link." }),
 });
 
-
-// Function to convert Excel serial number to JavaScript Date
 function excelSerialToDate(serial: number) {
     if (typeof serial !== 'number' || isNaN(serial)) {
         return null;
@@ -148,7 +145,6 @@ function parseDate(value: any): Date | null {
     }
     
     if (typeof value === 'string') {
-        // Try parsing dd/mm/yyyy
         const parts = value.split('/');
         if (parts.length === 3) {
             const date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00Z`);
@@ -165,17 +161,14 @@ function parseDate(value: any): Date | null {
 const reorderHeaders = (headers: string[]): string[] => {
     let newHeaders = [...headers];
 
-    // Ensure special columns exist
     if (!newHeaders.includes('STATUS')) newHeaders.push('STATUS');
     if (!newHeaders.includes('PREVISTO')) newHeaders.push('PREVISTO');
     if (!newHeaders.includes('DESVIO')) newHeaders.push('DESVIO');
     if (!newHeaders.includes('ID')) newHeaders.push('ID');
     
-    // Remove from current positions to re-insert later
     const columnsToMove = ['ID', 'AVANÇO', 'STATUS', 'ORDEM', 'PREVISTO', 'DESVIO'];
     newHeaders = newHeaders.filter(h => !columnsToMove.includes(h));
 
-    // Add columns in the desired order
     newHeaders.unshift('ID', 'AVANÇO', 'STATUS', 'ORDEM');
     
     const terminoPrevistoIndex = newHeaders.indexOf('TÉRMINO PREVISTO');
@@ -204,12 +197,13 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   initialData,
   initialHeaders,
   initialError,
-  initialLogData = [],
+  initialLogData,
+  initialLogDataError,
   currentSheetId,
-  isOnline: initialIsOnline,
 }) => {
-  const [allData, setAllData] = useState<SheetRow[]>(initialData);
-  const [headers] = useState<string[]>(() => reorderHeaders(initialHeaders));
+  const [allData, setAllData] = useState<SheetRow[]>([]);
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [logData, setLogData] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(initialError);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({
@@ -235,34 +229,72 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [isAddProjectDialogOpen, setAddProjectDialogOpen] = useState(false);
   const [isLoadingProject, setIsLoadingProject] = useState(true);
   
-  const [onlineStatus, setOnlineStatus] = useState(initialIsOnline);
+  const [onlineStatus, setOnlineStatus] = useState(true);
 
   useEffect(() => {
-    setOnlineStatus(initialIsOnline);
-    if (!initialIsOnline && initialData.length > 0) {
-      toast({
-        title: "Modo Offline",
-        description: "Exibindo os últimos dados salvos. As alterações serão sincronizadas quando a conexão for restaurada.",
-        variant: "default",
-        duration: 5000,
-      });
+    async function loadInitialData() {
+      setIsLoadingProject(true);
+      setError(null);
+
+      // 1. Tenta usar dados do servidor
+      if (initialData && initialData.length > 0) {
+        setOnlineStatus(true);
+        setHeaders(reorderHeaders(initialHeaders));
+        setAllData(initialData);
+        // Save to IndexedDB on successful fetch
+        await saveHeaders(currentSheetId, initialHeaders);
+        await saveSheetData(currentSheetId, initialData);
+      } else {
+        setOnlineStatus(false);
+        // 2. Se falhar, tenta carregar do IndexedDB
+        console.log(`Buscando dados offline para ${currentSheetId}...`);
+        const localHeaders = await getHeaders(currentSheetId);
+        const localData = await getSheetData(currentSheetId);
+
+        if (localData && localHeaders) {
+          setHeaders(reorderHeaders(localHeaders));
+          setAllData(localData);
+          toast({
+            title: "Modo Offline",
+            description: "Exibindo os últimos dados salvos.",
+            variant: "default",
+            duration: 5000,
+          });
+        } else {
+          setError(initialError || "Falha ao buscar dados e nenhum dado offline disponível.");
+          setHeaders([]);
+          setAllData([]);
+        }
+      }
+
+      // Lógica para LogData
+      if (initialLogData && initialLogData.length > 0) {
+        setLogData(initialLogData);
+        await saveLogData(currentSheetId, initialLogData);
+      } else {
+        const localLog = await getLogData(currentSheetId);
+        if (localLog) {
+          setLogData(localLog);
+        } else {
+          setLogData([]);
+          if(initialLogDataError) console.error("Erro ao carregar log do servidor e nenhum log offline encontrado.");
+        }
+      }
+      
+      setIsLoadingProject(false);
     }
-  }, [initialIsOnline, initialData.length, toast]);
+    loadInitialData();
+  }, [currentSheetId, initialData, initialHeaders, initialError, initialLogData, initialLogDataError, toast]);
+  
 
   useEffect(() => {
     if (currentSheetId) {
-      setIsLoadingProject(false);
+        const currentProjectExists = availableProjects.some(p => p.id === currentSheetId);
+        if (isLoadingProject && currentProjectExists) {
+             setIsLoadingProject(false);
+        }
     }
-  }, [currentSheetId]);
-
-  useEffect(() => {
-    setAllData(initialData);
-    setSearchTerm('');
-    setActiveFilters({ 'ÁREA': [], 'RESPONSÁVEL': [], 'ATUALIZADOR 1(EMAIL)': [] });
-    setResumoFilter('all');
-    setCaminhoCriticoFilter('all');
-    setCurrentPage(1);
-  }, [initialData]);
+  }, [currentSheetId, availableProjects, isLoadingProject]);
 
   const currentProject = useMemo(() => {
     return availableProjects.find(p => p.id === currentSheetId) || null;
@@ -281,7 +313,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     const loadProjects = async () => {
         let projects = await getProjects();
         if (!projects || projects.length === 0) {
-            // Fallback to localStorage or default
             try {
                 const storedProjects = localStorage.getItem(PROJECTS_STORAGE_KEY);
                 if (storedProjects) {
@@ -297,7 +328,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         }
 
         setAvailableProjects(projects);
-        await saveProjects(projects); // Sync IndexedDB with the final list
+        await saveProjects(projects); 
     };
 
     loadProjects();
@@ -331,7 +362,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   useEffect(() => {
     const savedVisibility = localStorage.getItem(COLUMN_VISIBILITY_KEY);
     const initialVisibility: Record<string, boolean> = {};
-    if (savedVisibility) {
+    if (savedVisibility && headers.length > 0) {
         try {
             const parsedVisibility = JSON.parse(savedVisibility);
             headers.forEach(header => {
@@ -339,22 +370,12 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             });
         } catch (e) {
             headers.forEach(header => {
-                const lowerHeader = header.toLowerCase();
-                if (['id', 'avanço', 'status', 'ordem'].includes(lowerHeader)) {
-                    initialVisibility[header] = true;
-                } else {
-                    initialVisibility[header] = !lowerHeader.startsWith('curva');
-                }
+                initialVisibility[header] = !header.toLowerCase().startsWith('curva');
             });
         }
-    } else {
+    } else if (headers.length > 0) {
         headers.forEach(header => {
-            const lowerHeader = header.toLowerCase();
-             if (['id', 'avanço', 'status', 'ordem'].includes(lowerHeader)) {
-                initialVisibility[header] = true;
-            } else {
-                initialVisibility[header] = !lowerHeader.startsWith('curva');
-            }
+            initialVisibility[header] = !header.toLowerCase().startsWith('curva');
         });
     }
     setColumnVisibility(initialVisibility);
@@ -376,11 +397,11 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       'RESPONSÁVEL': [],
       'ATUALIZADOR 1(EMAIL)': [],
     };
-    if (initialData.length > 0) {
+    if (allData.length > 0) {
       const area = new Set<string>();
       const responsavel = new Set<string>();
       const atualizador1 = new Set<string>();
-      initialData.forEach(row => {
+      allData.forEach(row => {
         if (row['ÁREA']) area.add(String(row['ÁREA']));
         if (row['RESPONSÁVEL']) responsavel.add(String(row['RESPONSÁVEL']));
         if (row['ATUALIZADOR 1(EMAIL)']) atualizador1.add(String(row['ATUALIZADOR 1(EMAIL)']));
@@ -390,7 +411,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       options['ATUALIZADOR 1(EMAIL)'] = Array.from(atualizador1).sort();
     }
     return options;
-  }, [initialData]);
+  }, [allData]);
 
   const processedData = useMemo(() => {
     let dataToProcess = JSON.parse(JSON.stringify(allData));
@@ -399,10 +420,8 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     today.setHours(0, 0, 0, 0); 
 
     dataToProcess.forEach((row: SheetRow) => {
-      // Add ID column
       row['ID'] = row['id'];
 
-      // Calculate PREVISTO and DESVIO
       const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
       const endDate = parseDate(row['TÉRMINO DA LINHA DE BASE']);
       
@@ -433,7 +452,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         row['DESVIO'] = '-';
       }
 
-      // Calculate STATUS
       const avancoNum = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
       if (isFinite(avancoNum)) {
         if (avancoNum === 100) {
@@ -481,7 +499,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const filteredData = useMemo(() => {
     let data = [...processedData];
-    // Search filter
     if (searchTerm) {
       data = data.filter(row =>
         Object.values(row).some(value =>
@@ -489,7 +506,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         )
       );
     }
-    // Column filters
     data = data.filter(row => {
       if (activeFilters['ÁREA'].length > 0 && !activeFilters['ÁREA'].includes(String(row['ÁREA']))) return false;
       if (activeFilters['RESPONSÁVEL'].length > 0 && !activeFilters['RESPONSÁVEL'].includes(String(row['RESPONSÁVEL']))) return false;
@@ -497,12 +513,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       return true;
     });
 
-    // Resumo filter
     if (resumoFilter !== 'all') {
       data = data.filter(row => String(row['RESUMO(SIM/NÃO)']).toLowerCase() === resumoFilter);
     }
 
-    // Caminho Crítico filter
     if (caminhoCriticoFilter !== 'all') {
       data = data.filter(row => String(row['CAMINHO CRÍTICO(SIM/NÃO)']).toLowerCase() === caminhoCriticoFilter);
     }
@@ -547,15 +561,12 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
             
             let isDelayed = false;
-            // A task is delayed if it's not 100% complete and today is past the start date
-            // AND its current progress is less than its expected progress (previsto).
             if (avancoNum < 100 && startDate && startDate.getTime() < today.getTime()) {
                 const previsto = parseFloat(String(row['PREVISTO'] || '0').replace('%',''));
                 if(isFinite(previsto) && avancoNum < previsto) {
                     isDelayed = true;
                 }
             }
-
 
             if (avancoNum === 100) {
                 dataByArea[area]['CONCLUÍDO']++;
@@ -564,7 +575,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 if (isDelayed) {
                     dataByArea[area]['ATRASADA']++;
                 }
-            } else { // avancoNum is 0 or NaN
+            } else { 
                 dataByArea[area]['NÃO INICIADO']++;
                 if (isDelayed) {
                    dataByArea[area]['ATRASADA']++;
@@ -574,12 +585,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     });
 
     return Object.keys(dataByArea)
-      .map(area => {
-        return {
-          area,
-          ...dataByArea[area]
-        }
-      })
+      .map(area => ({ area, ...dataByArea[area] }))
       .sort((a, b) => a.area.localeCompare(b.area));
   }, [filteredData]);
 
@@ -606,15 +612,9 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 dataByArea[area] = { totalRealizado: 0, totalPrevisto: 0, count: 0, endDate: null };
             }
 
-            if (!isNaN(realizado)) {
-                dataByArea[area].totalRealizado += realizado;
-            }
-            if (!isNaN(previsto)) {
-                dataByArea[area].totalPrevisto += previsto;
-            }
-            if(!isNaN(realizado) || !isNaN(previsto)) {
-               dataByArea[area].count++;
-            }
+            if (!isNaN(realizado)) dataByArea[area].totalRealizado += realizado;
+            if (!isNaN(previsto)) dataByArea[area].totalPrevisto += previsto;
+            if(!isNaN(realizado) || !isNaN(previsto)) dataByArea[area].count++;
             if (endDate && (!dataByArea[area].endDate || endDate > dataByArea[area].endDate!)) {
                 dataByArea[area].endDate = endDate;
             }
@@ -634,13 +634,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
           diasRestantes = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
       }
 
-      chartData[area] = [{
-        name: area,
-        realizado,
-        previsto,
-        gap,
-        diasRestantes,
-      }];
+      chartData[area] = [{ name: area, realizado, previsto, gap, diasRestantes }];
     }
 
     return chartData;
@@ -672,14 +666,13 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   }, [filteredData]);
   
   const { dailyLogChartData, dailyLogChartKeys } = useMemo(() => {
-    if (!initialLogData || initialLogData.length === 0 || initialData.length === 0) {
+    if (!logData || logData.length === 0 || allData.length === 0) {
       return { dailyLogChartData: [], dailyLogChartKeys: [] };
     }
 
-    // 1. Create a map from task ID to its area
     const taskToAreaMap: Record<string, string> = {};
     const allTaskIds = new Set<string>();
-    initialData.forEach(row => {
+    allData.forEach(row => {
       if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não' && row.id) {
         const taskId = String(row.id);
         taskToAreaMap[taskId] = String(row['ÁREA'] || 'N/A');
@@ -687,14 +680,12 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       }
     });
     
-    // 2. Get a sorted list of all unique areas
     const allAreas = Array.from(new Set(Object.values(taskToAreaMap))).sort();
 
-    // 3. Group logs by date (YYYY-MM-DD format)
     const logsByDate: Record<string, { taskId: string; progress: number }[]> = {};
-    initialLogData.forEach(log => {
+    logData.forEach(log => {
       const taskId = String(log.ID_TAREFA);
-      if (taskToAreaMap[taskId]) { // Only consider logs for tasks in the main sheet
+      if (taskToAreaMap[taskId]) { 
         try {
           const timestamp = new Date(log.TIMESTAMP);
           if (isNaN(timestamp.getTime())) return;
@@ -718,13 +709,11 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       return { dailyLogChartData: [], dailyLogChartKeys: [] };
     }
 
-    // 4. Build the cumulative progress day by day
     const dailyStates: DailyProgressChartData[] = [];
     const currentTaskProgress: Record<string, number> = {};
-    allTaskIds.forEach(id => currentTaskProgress[id] = 0); // Initialize all tasks at 0%
+    allTaskIds.forEach(id => currentTaskProgress[id] = 0);
 
     for (const dateKey of sortedDates) {
-      // Update the progress for tasks that have logs for the current day
       const todaysLogs = logsByDate[dateKey] || [];
       todaysLogs.forEach(log => {
         if (typeof log.progress === 'number' && !isNaN(log.progress)) {
@@ -732,7 +721,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         }
       });
 
-      // Calculate the average progress for each area based on the *current* state of all tasks
       const progressByArea: Record<string, { total: number; count: number }> = {};
       allAreas.forEach(area => {
         progressByArea[area] = { total: 0, count: 0 };
@@ -758,7 +746,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     }
     
     return { dailyLogChartData: dailyStates, dailyLogChartKeys: allAreas };
-}, [initialLogData, initialData]);
+}, [logData, allData]);
 
 
   const selectedOrderTasks = useMemo(() => {
@@ -788,7 +776,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const handleAdvanceChange = (id: number, increment: boolean) => {
     let updatedRow: SheetRow | undefined;
     
-    // First, update the local state immediately for a responsive UI
     setAllData(currentData => {
         const newData = currentData.map(row => {
             if (row.id === id) {
@@ -803,7 +790,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         return newData;
     });
 
-    // Then, trigger the save operation in the background
     if (updatedRow) {
         setIsAutoSaving(true);
         startSaving(async () => {
@@ -814,7 +800,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     title: "Erro no Salvamento Automático",
                     description: result.message,
                 });
-                // Optional: Revert local state if save fails
                 setAllData(initialData); 
             }
              setIsAutoSaving(false);
@@ -830,9 +815,9 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const handleManualSave = () => {
     startSaving(async () => {
-        const result = await saveDataToSheet(currentSheetId, reorderHeaders(initialHeaders), allData, updatedRows);
+        const result = await saveDataToSheet(currentSheetId, initialHeaders, allData, updatedRows);
         if (result.success) {
-            setUpdatedRows([]); // Clear updated rows after successful save
+            setUpdatedRows([]); 
             toast({
                 title: "Salvo com sucesso!",
                 description: "Suas alterações foram gravadas na planilha.",
@@ -999,7 +984,18 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     </>
   );
 
-  if (error && initialData.length === 0) {
+  if (isLoadingProject) {
+     return (
+        <Card className="border-0 shadow-none sm:border sm:shadow-sm bg-transparent relative h-[80vh] flex items-center justify-center">
+            <div className="flex flex-col items-center justify-center z-50">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="mt-4 text-lg font-semibold text-primary">Carregando projeto...</p>
+            </div>
+        </Card>
+     )
+  }
+
+  if (error && allData.length === 0) {
     return (
       <Card className="border-0 shadow-none sm:border sm:shadow-sm">
         <CardHeader>

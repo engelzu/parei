@@ -1,5 +1,6 @@
 
-import { openDB, type DBSchema } from 'idb';
+'use client';
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { Project, SheetRow } from '@/lib/types';
 
 const DB_NAME = 'PAREI-DB';
@@ -39,88 +40,109 @@ interface PareiDB extends DBSchema {
   };
 }
 
-const dbPromise = openDB<PareiDB>(DB_NAME, DB_VERSION, {
-  upgrade(db) {
-    if (!db.objectStoreNames.contains(STORE_SHEET_DATA)) {
-      db.createObjectStore(STORE_SHEET_DATA);
+let dbPromise: Promise<IDBPDatabase<PareiDB>> | null = null;
+
+const getDb = () => {
+    if (typeof window === 'undefined') {
+        return null;
     }
-    if (!db.objectStoreNames.contains(STORE_PROJECTS)) {
-      db.createObjectStore(STORE_PROJECTS);
+    if (!dbPromise) {
+        dbPromise = openDB<PareiDB>(DB_NAME, DB_VERSION, {
+            upgrade(db) {
+                if (!db.objectStoreNames.contains(STORE_SHEET_DATA)) {
+                    db.createObjectStore(STORE_SHEET_DATA);
+                }
+                if (!db.objectStoreNames.contains(STORE_PROJECTS)) {
+                    db.createObjectStore(STORE_PROJECTS);
+                }
+                if (!db.objectStoreNames.contains(STORE_HEADERS)) {
+                    db.createObjectStore(STORE_HEADERS);
+                }
+                if (!db.objectStoreNames.contains(STORE_LOG_DATA)) {
+                    db.createObjectStore(STORE_LOG_DATA);
+                }
+                if (!db.objectStoreNames.contains(STORE_UPDATES_QUEUE)) {
+                    const store = db.createObjectStore(STORE_UPDATES_QUEUE, { autoIncrement: true });
+                    store.createIndex('by-sheetId', 'sheetId');
+                }
+            },
+        });
     }
-     if (!db.objectStoreNames.contains(STORE_HEADERS)) {
-      db.createObjectStore(STORE_HEADERS);
-    }
-     if (!db.objectStoreNames.contains(STORE_LOG_DATA)) {
-      db.createObjectStore(STORE_LOG_DATA);
-    }
-     if (!db.objectStoreNames.contains(STORE_UPDATES_QUEUE)) {
-      const store = db.createObjectStore(STORE_UPDATES_QUEUE, { autoIncrement: true });
-      store.createIndex('by-sheetId', 'sheetId');
-    }
-  },
-});
+    return dbPromise;
+}
+
 
 // --- Funções de Dados da Planilha ---
 export async function saveSheetData(sheetId: string, data: SheetRow[]) {
   if (!sheetId) return;
-  const db = await dbPromise;
-  await db.put(STORE_SHEET_DATA, data, sheetId);
+  const db = getDb();
+  if (!db) return;
+  await (await db).put(STORE_SHEET_DATA, data, sheetId);
 }
 
 export async function getSheetData(sheetId: string): Promise<SheetRow[] | undefined> {
    if (!sheetId) return undefined;
-   const db = await dbPromise;
-   return await db.get(STORE_SHEET_DATA, sheetId);
+   const db = getDb();
+   if (!db) return undefined;
+   return await (await db).get(STORE_SHEET_DATA, sheetId);
 }
 
 // --- Funções de Cabeçalhos ---
 export async function saveHeaders(sheetId: string, headers: string[]) {
     if (!sheetId) return;
-    const db = await dbPromise;
-    await db.put(STORE_HEADERS, headers, sheetId);
+    const db = getDb();
+    if (!db) return;
+    await (await db).put(STORE_HEADERS, headers, sheetId);
 }
 
 export async function getHeaders(sheetId: string): Promise<string[] | undefined> {
     if (!sheetId) return undefined;
-    const db = await dbPromise;
-    return await db.get(STORE_HEADERS, sheetId);
+    const db = getDb();
+    if (!db) return undefined;
+    return await (await db).get(STORE_HEADERS, sheetId);
 }
 
 // --- Funções de Log ---
 export async function saveLogData(sheetId: string, logData: any[]) {
     if (!sheetId) return;
-    const db = await dbPromise;
-    await db.put(STORE_LOG_DATA, logData, sheetId);
+    const db = getDb();
+    if (!db) return;
+    await (await db).put(STORE_LOG_DATA, logData, sheetId);
 }
 
 export async function getLogData(sheetId: string): Promise<any[] | undefined> {
     if (!sheetId) return undefined;
-    const db = await dbPromise;
-    return await db.get(STORE_LOG_DATA, sheetId);
+    const db = getDb();
+    if (!db) return undefined;
+    return await (await db).get(STORE_LOG_DATA, sheetId);
 }
 
 
 // --- Funções de Projetos ---
 export async function saveProjects(projects: Project[]) {
-    const db = await dbPromise;
-    await db.put(STORE_PROJECTS, projects, 'all-projects');
+    const db = getDb();
+    if (!db) return;
+    await (await db).put(STORE_PROJECTS, projects, 'all-projects');
 }
 
 export async function getProjects(): Promise<Project[] | undefined> {
-    const db = await dbPromise;
-    return await db.get(STORE_PROJECTS, 'all-projects');
+    const db = getDb();
+    if (!db) return undefined;
+    return await (await db).get(STORE_PROJECTS, 'all-projects');
 }
 
 // --- Funções para a Fila de Atualização (Offline) ---
 
 export async function addRowToUpdateQueue(sheetId: string, row: SheetRow) {
-  const db = await dbPromise;
-  await db.add(STORE_UPDATES_QUEUE, { sheetId, row, timestamp: Date.now() });
+  const db = getDb();
+  if (!db) return;
+  await (await db).add(STORE_UPDATES_QUEUE, { sheetId, row, timestamp: Date.now() });
 }
 
-export async function getQueuedUpdates(): Promise<{ key: number, value: { sheetId: string, row: SheetRow } }[]> {
-  const db = await dbPromise;
-  const tx = db.transaction(STORE_UPDATES_QUEUE, 'readonly');
+export async function getQueuedUpdates(): Promise<{ key: number, value: { sheetId: string, row: SheetRow } }[] | undefined> {
+  const db = getDb();
+  if (!db) return undefined;
+  const tx = (await db).transaction(STORE_UPDATES_QUEUE, 'readonly');
   const store = tx.objectStore(STORE_UPDATES_QUEUE);
   const allUpdates = await store.getAllWithKeys();
   await tx.done;
@@ -129,13 +151,15 @@ export async function getQueuedUpdates(): Promise<{ key: number, value: { sheetI
 
 
 export async function removeQueuedUpdate(key: number) {
-  const db = await dbPromise;
-  await db.delete(STORE_UPDATES_QUEUE, key);
+  const db = getDb();
+  if (!db) return;
+  await (await db).delete(STORE_UPDATES_QUEUE, key);
 }
 
 export async function clearUpdateQueue() {
-    const db = await dbPromise;
-    const tx = db.transaction(STORE_UPDATES_QUEUE, 'readwrite');
+    const db = getDb();
+    if (!db) return;
+    const tx = (await db).transaction(STORE_UPDATES_QUEUE, 'readwrite');
     await tx.store.clear();
     await tx.done;
 }
