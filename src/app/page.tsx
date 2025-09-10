@@ -19,7 +19,7 @@ async function getSheetDataFromServer(sheetId: string) {
   }
   try {
     const url = `${APPS_SCRIPT_URL}?action=getData&sheetId=${sheetId}`;
-    const response = await fetch(url, { cache: 'no-store' }); // Alterado para sempre buscar dados novos
+    const response = await fetch(url, { next: { revalidate: 5 } }); // Alterado para revalidação curta
     if (!response.ok) {
        const errorText = await response.text();
        console.error(`Erro de rede ao buscar dados: ${response.status} - ${errorText}`);
@@ -64,7 +64,7 @@ async function getLogDataFromServer(sheetId: string) {
     if (!sheetId) return { data: [], error: "ID da planilha não fornecido." };
     try {
         const url = `${APPS_SCRIPT_URL}?action=getLogData&sheetId=${sheetId}`;
-        const response = await fetch(url, { cache: 'no-store' });
+        const response = await fetch(url, { next: { revalidate: 5 } }); // Alterado para revalidação curta
         if (!response.ok) {
             const errorText = await response.text();
             console.error(`Erro de rede ao buscar log: ${response.status} - ${errorText}`);
