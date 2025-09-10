@@ -42,7 +42,7 @@ async function getSheetDataFromServer(sheetId: string) {
     const data = json.data.slice(1).map((row: any[], index: number) => {
       const rowObj: { [key: string]: any } = {};
       // Usa o valor da coluna 'ID' como o id da linha. Se estiver vazio, usa o número da linha como fallback.
-      const rowId = row[idColumnIndex] ? Number(row[idColumnlineaIndex]) : index + 1;
+      const rowId = row[idColumnIndex] ? Number(row[idColumnIndex]) : index + 1;
       rowObj['id'] = rowId;
 
       row.forEach((cell, i) => {
