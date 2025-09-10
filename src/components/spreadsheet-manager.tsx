@@ -91,12 +91,15 @@ import {
   History,
   PlusCircle,
   FileSpreadsheet,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProgressChart, type ChartData } from '@/components/progress-chart';
 import { PlannedRealizedChart, type LineChartData } from '@/components/line-chart';
 import { AreaProgressChart, type AreaProgressChartData } from '@/components/area-progress-chart';
 import { DailyProgressChart, type DailyProgressChartData } from '@/components/daily-progress-chart';
+import { getProjects, saveProjects } from '@/lib/db';
 
 
 interface SpreadsheetManagerProps {
@@ -105,6 +108,7 @@ interface SpreadsheetManagerProps {
   initialError: string | null;
   initialLogData?: any[];
   currentSheetId: string;
+  isOnline: boolean;
 }
 
 const ROWS_PER_PAGE = 15;
@@ -202,6 +206,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   initialError,
   initialLogData = [],
   currentSheetId,
+  isOnline: initialIsOnline,
 }) => {
   const [allData, setAllData] = useState<SheetRow[]>(initialData);
   const [headers] = useState<string[]>(() => reorderHeaders(initialHeaders));
@@ -225,19 +230,30 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [updatedRows, setUpdatedRows] = useState<SheetRow[]>([]);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
 
-  // All project management state is now handled on the client
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
   const [isAddProjectDialogOpen, setAddProjectDialogOpen] = useState(false);
   const [isLoadingProject, setIsLoadingProject] = useState(true);
   
+  const [onlineStatus, setOnlineStatus] = useState(initialIsOnline);
+
   useEffect(() => {
-    // Only turn off loading when the component has mounted and the data for the current ID is confirmed
-    if (currentSheetId === searchParams.get('sheetId') || (!searchParams.get('sheetId') && currentSheetId === defaultProjects[0].id)) {
-        setIsLoadingProject(false);
+    setOnlineStatus(initialIsOnline);
+    if (!initialIsOnline && initialData.length > 0) {
+      toast({
+        title: "Modo Offline",
+        description: "Exibindo os últimos dados salvos. As alterações serão sincronizadas quando a conexão for restaurada.",
+        variant: "default",
+        duration: 5000,
+      });
     }
-  }, [currentSheetId, searchParams, initialData]);
+  }, [initialIsOnline, initialData.length, toast]);
+
+  useEffect(() => {
+    if (currentSheetId) {
+      setIsLoadingProject(false);
+    }
+  }, [currentSheetId]);
 
   useEffect(() => {
     setAllData(initialData);
@@ -261,34 +277,37 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     },
   });
 
-  // Load projects from localStorage on component mount
   useEffect(() => {
-    try {
-      const storedProjects = localStorage.getItem(PROJECTS_STORAGE_KEY);
-      if (storedProjects) {
-        const parsedProjects = JSON.parse(storedProjects);
-        if (parsedProjects.length > 0) {
-            setAvailableProjects(parsedProjects);
-        } else {
-            // If stored projects is an empty array, initialize with default
-            setAvailableProjects(defaultProjects);
-            localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(defaultProjects));
+    const loadProjects = async () => {
+        let projects = await getProjects();
+        if (!projects || projects.length === 0) {
+            // Fallback to localStorage or default
+            try {
+                const storedProjects = localStorage.getItem(PROJECTS_STORAGE_KEY);
+                if (storedProjects) {
+                    projects = JSON.parse(storedProjects);
+                }
+            } catch (e) {
+                console.error("Failed to parse projects from localStorage", e);
+            }
         }
-      } else {
-        // If no projects in storage, initialize with the default
-        setAvailableProjects(defaultProjects);
-        localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(defaultProjects));
-      }
-    } catch (error) {
-      console.error("Failed to load projects from localStorage", error);
-      setAvailableProjects(defaultProjects);
-    }
+        
+        if (!projects || projects.length === 0) {
+            projects = defaultProjects;
+        }
+
+        setAvailableProjects(projects);
+        await saveProjects(projects); // Sync IndexedDB with the final list
+    };
+
+    loadProjects();
   }, []);
 
-  const handleAddProject = (values: z.infer<typeof projectSchema>) => {
+  const handleAddProject = async (values: z.infer<typeof projectSchema>) => {
     const newProject: Project = { name: values.name, id: values.id };
     const updatedProjects = [...availableProjects, newProject];
     setAvailableProjects(updatedProjects);
+    await saveProjects(updatedProjects);
     localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updatedProjects));
     toast({
       title: "Projeto Adicionado!",
@@ -296,13 +315,12 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     });
     form.reset();
     setAddProjectDialogOpen(false);
-    // Navigate to the new project page to load its data
     handleProjectChange(newProject.id);
   };
 
-  const handleProjectChange = (projectId: string) => {
+ const handleProjectChange = (projectId: string) => {
     if (projectId === currentSheetId) return;
-    setIsLoadingProject(true); // Activate loading overlay immediately
+    setIsLoadingProject(true); 
     router.push(`/?sheetId=${encodeURIComponent(projectId)}`);
   };
   
@@ -981,7 +999,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     </>
   );
 
-  if (error) {
+  if (error && initialData.length === 0) {
     return (
       <Card className="border-0 shadow-none sm:border sm:shadow-sm">
         <CardHeader>
@@ -1262,9 +1280,10 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         <div className="flex flex-col items-center gap-4">
             <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-2">
                 <CardTitle className="text-2xl font-bold text-primary text-center">{currentProject?.name || 'Carregando Projeto...'}</CardTitle>
-                <CardDescription className="text-primary/70 text-sm">
-                    {lastUpdated ? `Última atualização: ${lastUpdated}` : 'Carregando...'}
-                </CardDescription>
+                <div className={cn("flex items-center gap-2 text-sm font-semibold", onlineStatus ? 'text-green-600' : 'text-red-600')}>
+                    {onlineStatus ? <Wifi className="h-4 w-4"/> : <WifiOff className="h-4 w-4" />}
+                    <span>{onlineStatus ? 'ONLINE' : 'OFFLINE'}</span>
+                </div>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="border-primary/50 uppercase">
@@ -1280,7 +1299,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                  <ViewButtons />
                 <Button size="sm" variant="outline" onClick={handleDownloadTemplate} className="border-primary/50 uppercase">
                     <Download className="mr-2 h-4 w-4" />
-                    EXPORTAR
+                    TEMPLATE
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
