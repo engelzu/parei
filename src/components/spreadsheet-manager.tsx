@@ -99,7 +99,7 @@ import { ProgressChart, type ChartData } from '@/components/progress-chart';
 import { PlannedRealizedChart, type LineChartData } from '@/components/line-chart';
 import { AreaProgressChart, type AreaProgressChartData } from '@/components/area-progress-chart';
 import { DailyProgressChart, type DailyProgressChartData } from '@/components/daily-progress-chart';
-import { getProjects, saveProjects, getSheetData, getHeaders, getLogData, saveSheetData, saveHeaders, saveLogData, addRowToUpdateQueue } from '@/lib/db';
+import { getProjects, saveProjects, getSheetData, getHeaders, getLogData, saveSheetData, saveHeaders, saveLogData, addRowToUpdateQueue, getQueuedUpdates, removeQueuedUpdate } from '@/lib/db';
 
 
 interface SpreadsheetManagerProps {
@@ -230,6 +230,77 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const [isLoadingProject, setIsLoadingProject] = useState(true);
   
   const [onlineStatus, setOnlineStatus] = useState(true);
+
+  // --- SINCRONIZAÇÃO OFFLINE ---
+  const processUpdateQueue = useCallback(async () => {
+    if (!navigator.onLine) return;
+
+    const queuedUpdates = await getQueuedUpdates();
+    if (!queuedUpdates || queuedUpdates.length === 0) return;
+
+    toast({
+      title: 'Sincronizando alterações...',
+      description: `Enviando ${queuedUpdates.length} alterações feitas offline.`,
+    });
+
+    let successCount = 0;
+    for (const update of queuedUpdates) {
+      // Apenas sincroniza updates do projeto atual
+      if (update.value.sheetId === currentSheetId) {
+        const result = await saveSingleRow(update.value.sheetId, update.value.row);
+        if (result.success) {
+          await removeQueuedUpdate(update.key);
+          successCount++;
+        }
+      }
+    }
+    
+    if (successCount > 0) {
+      toast({
+        title: 'Sincronização Concluída!',
+        description: `${successCount} alterações foram salvas na planilha. Atualizando dados.`,
+      });
+      // Recarrega a página para garantir que todos os dados estão consistentes
+      window.location.reload();
+    }
+  }, [currentSheetId, toast]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setOnlineStatus(true);
+      toast({
+        title: 'Você está online!',
+        description: 'Conexão com a internet restabelecida.',
+      });
+      processUpdateQueue();
+    };
+
+    const handleOffline = () => {
+      setOnlineStatus(false);
+      toast({
+        title: 'Você está offline!',
+        description: 'As alterações serão salvas localmente e sincronizadas depois.',
+        variant: 'destructive',
+      });
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    // Sincroniza ao carregar a página, caso haja algo na fila de uma sessão anterior
+    if (navigator.onLine) {
+        handleOnline();
+    } else {
+        handleOffline();
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [processUpdateQueue, toast]);
+  // --- FIM DA SINCRONIZAÇÃO OFFLINE ---
+
 
   useEffect(() => {
     async function loadInitialData() {
@@ -813,13 +884,27 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       setIsAutoSaving(true);
       startSaving(async () => {
           const result = await saveSingleRow(currentSheetId, updatedRow!);
-          if (!result.success) {
+          if (result.success) {
+            toast({
+              title: "Salvo!",
+              description: "Avanço salvo com sucesso.",
+              duration: 2000,
+            });
+          } else {
               toast({
                   variant: "destructive",
                   title: "Erro no Salvamento Automático",
                   description: result.message,
               });
-              setAllData(initialData); 
+              // Reverte a alteração otimista em caso de erro
+              setAllData(prevData => {
+                  const revertedData = [...prevData];
+                  const index = revertedData.findIndex(r => r.id === id);
+                  if (index !== -1) {
+                      revertedData[index] = initialData.find(r => r.id === id) || revertedData[index];
+                  }
+                  return revertedData;
+              });
           }
            setIsAutoSaving(false);
       });
@@ -833,6 +918,14 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   };
 
   const handleManualSave = () => {
+    if (!onlineStatus) {
+      toast({
+        variant: "destructive",
+        title: "Você está offline",
+        description: "Não é possível salvar tudo. As alterações individuais são salvas na fila para sincronização.",
+      });
+      return;
+    }
     startSaving(async () => {
         const result = await saveDataToSheet(currentSheetId, initialHeaders, allData, updatedRows);
         if (result.success) {
@@ -1548,3 +1641,5 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     </Card>
   );
 };
+
+    
