@@ -17,12 +17,12 @@ export async function saveDataToSheet(sheetId: string, headers: string[], allDat
     // Para salvamento de múltiplas linhas (botão Salvar)
     // Enviamos apenas as linhas que foram alteradas
     const values = updatedRows.map(row => {
-      const rowData: { [key: string]: string } = { id: String(row.id) };
-      headers.forEach(header => {
-         if (header === 'AVANÇO') {
-            rowData[header] = String(row[header] || '0').replace('%', '');
-         }
-      });
+      // Usamos o 'ID' da planilha como identificador único
+      const rowData: { [key: string]: string | number } = { id: row.id };
+      
+      // Enviamos apenas o avanço
+      rowData['AVANÇO'] = String(row['AVANÇO'] || '0').replace('%', '');
+      
       return rowData;
     });
 
@@ -75,14 +75,14 @@ export async function saveSingleRow(sheetId: string, row: SheetRow) {
 
   try {
     const logData = [{
-      'ID': row['id'],
+      'ID': row.id,
       'AVANÇO': String(row['AVANÇO'] || '0').replace('%', ''),
     }];
 
     const payload = {
       action: 'updateRow',
       sheetId: sheetId,
-      rowId: row.id,
+      rowId: row.id, // Usando o ID permanente da linha
       rowAdvance: String(row['AVANÇO'] || '0').replace('%', ''),
       logData: JSON.stringify(logData)
     };

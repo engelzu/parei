@@ -33,8 +33,18 @@ async function getSheetDataFromServer(sheetId: string) {
       throw new Error('Nenhum dado retornado da planilha. Verifique se a planilha está vazia ou se o ID está correto.');
     }
     const headers: string[] = json.data[0];
+    const idColumnIndex = headers.indexOf('ID');
+
+    if (idColumnIndex === -1) {
+        throw new Error('A coluna "ID" não foi encontrada na planilha. Ela é essencial para o funcionamento do aplicativo.');
+    }
+      
     const data = json.data.slice(1).map((row: any[], index: number) => {
-      const rowObj: { [key: string]: any } = { id: index + 1 };
+      const rowObj: { [key: string]: any } = {};
+      // Usa o valor da coluna 'ID' como o id da linha. Se estiver vazio, usa o número da linha como fallback.
+      const rowId = row[idColumnIndex] ? Number(row[idColumnIndex]) : index + 1;
+      rowObj['id'] = rowId;
+
       row.forEach((cell, i) => {
         rowObj[headers[i]] = cell ?? '';
       });

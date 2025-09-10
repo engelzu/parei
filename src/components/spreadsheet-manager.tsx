@@ -502,8 +502,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     today.setHours(0, 0, 0, 0); 
 
     dataToProcess.forEach((row: SheetRow) => {
-      row['ID'] = row['id'];
-
       const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
       const endDate = parseDate(row['TÉRMINO DA LINHA DE BASE']);
       
@@ -1658,5 +1656,3 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     </Card>
   );
 };
-
-    
