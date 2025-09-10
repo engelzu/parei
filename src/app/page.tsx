@@ -19,7 +19,7 @@ async function getSheetDataFromServer(sheetId: string) {
   }
   try {
     const url = `${APPS_SCRIPT_URL}?action=getData&sheetId=${sheetId}`;
-    const response = await fetch(url, { next: { revalidate: 60 } }); // Revalida a cada 60s
+    const response = await fetch(url, { cache: 'no-store' }); // Alterado para sempre buscar dados novos
     if (!response.ok) {
        const errorText = await response.text();
        console.error(`Erro de rede ao buscar dados: ${response.status} - ${errorText}`);
@@ -42,7 +42,7 @@ async function getSheetDataFromServer(sheetId: string) {
     const data = json.data.slice(1).map((row: any[], index: number) => {
       const rowObj: { [key: string]: any } = {};
       // Usa o valor da coluna 'ID' como o id da linha. Se estiver vazio, usa o número da linha como fallback.
-      const rowId = row[idColumnIndex] ? Number(row[idColumnIndex]) : index + 1;
+      const rowId = row[idColumnIndex] ? Number(row[idColumnlineaIndex]) : index + 1;
       rowObj['id'] = rowId;
 
       row.forEach((cell, i) => {
