@@ -62,7 +62,7 @@ const getDb = () => {
                     db.createObjectStore(STORE_LOG_DATA);
                 }
                 if (!db.objectStoreNames.contains(STORE_UPDATES_QUEUE)) {
-                    const store = db.createObjectStore(STORE_UPDATES_QUEUE, { autoIncrement: true });
+                    const store = db.createObjectStore(STORE_UPDATES_QUEUE, { autoIncrement: true, keyPath: 'id' });
                     store.createIndex('by-sheetId', 'sheetId');
                 }
             },
@@ -140,13 +140,20 @@ export async function addRowToUpdateQueue(sheetId: string, row: SheetRow) {
 }
 
 export async function getQueuedUpdates(): Promise<{ key: number, value: { sheetId: string, row: SheetRow } }[] | undefined> {
-  const db = getDb();
-  if (!db) return undefined;
-  const tx = (await db).transaction(STORE_UPDATES_QUEUE, 'readonly');
-  const store = tx.objectStore(STORE_UPDATES_QUEUE);
-  const allUpdates = await store.getAllWithKeys();
-  await tx.done;
-  return allUpdates.map(item => ({ key: item.key as number, value: item.value as { sheetId: string, row: SheetRow } }));
+    const db = getDb();
+    if (!db) return undefined;
+    const tx = (await db).transaction(STORE_UPDATES_QUEUE, 'readonly');
+    const store = tx.objectStore(STORE_UPDATES_QUEUE);
+    const updates: { key: number, value: { sheetId: string, row: SheetRow } }[] = [];
+    
+    let cursor = await store.openCursor();
+    while (cursor) {
+        updates.push({ key: cursor.primaryKey, value: cursor.value });
+        cursor = await cursor.continue();
+    }
+    
+    await tx.done;
+    return updates;
 }
 
 
@@ -163,3 +170,4 @@ export async function clearUpdateQueue() {
     await tx.store.clear();
     await tx.done;
 }
+
