@@ -1474,7 +1474,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         <div className="flex flex-wrap items-end gap-4 mb-4">
             <div className="flex-1 min-w-[250px]">
                 <Label className="text-xs font-medium text-primary">SELECIONAR PROJETO</Label>
-                <Select onValueChange={handleProjectChange} value={currentSheetId || ''}>
+                <Select onValueChange={handleProjectChange} value={currentSheetId || ''} disabled={isLoadingProject}>
                 <SelectTrigger className="w-full mt-1 h-9 rounded-md">
                     <SelectValue placeholder="Selecione um projeto" />
                 </SelectTrigger>
