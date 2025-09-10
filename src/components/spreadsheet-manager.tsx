@@ -1390,56 +1390,56 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       )}
       <CardHeader>
         <div className="flex flex-col items-start gap-4">
-            <div className="w-full flex items-center justify-between flex-wrap gap-x-4 gap-y-2">
-                <CardTitle className="text-2xl font-bold text-primary">{currentProject?.name || 'Carregando Projeto...'}</CardTitle>
-                <div className={cn("flex items-center gap-2 text-sm font-semibold", onlineStatus ? 'text-green-600' : 'text-red-600')}>
+          <div className="w-full flex flex-wrap items-center justify-start gap-2">
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="border-primary/50 uppercase">
+                  <RotateCw className="mr-2 h-4 w-4" /> ATUALIZAR
+              </Button>
+              <div className="flex items-center justify-center p-2 bg-primary text-primary-foreground rounded-md text-sm font-medium uppercase h-9">
+                IDs: {filteredData.length}
+              </div>
+               <Button size="sm" onClick={handleManualSave} disabled={isSaving || isAutoSaving} className="uppercase">
+                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : isAutoSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  {isAutoSaving ? 'SALVANDO...' : 'SALVAR'}
+              </Button>
+               <ViewButtons />
+              <Button size="sm" variant="outline" onClick={handleDownloadTemplate} className="border-primary/50 uppercase">
+                  <Download className="mr-2 h-4 w-4" />
+                  TEMPLATE
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="border-primary/50 uppercase"><Columns className="mr-2 h-4 w-4" /> Colunas</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel>Exibir/Ocultar Colunas</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <ScrollArea className="h-72">
+                      <div className="p-2">
+                      {headers.map((header) => (
+                        <DropdownMenuCheckboxItem
+                          key={header}
+                          className="capitalize"
+                          checked={columnVisibility[header] ?? true}
+                          onCheckedChange={(value) =>
+                            setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
+                          }
+                           onSelect={(e) => e.preventDefault()}
+                        >
+                          {header}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                      </div>
+                  </ScrollArea>
+                </DropdownMenuContent>
+              </DropdownMenu>
+               <div className={cn("flex items-center gap-2 text-sm font-semibold ml-auto", onlineStatus ? 'text-green-600' : 'text-red-600')}>
                     {onlineStatus ? <Wifi className="h-4 w-4"/> : <WifiOff className="h-4 w-4" />}
                     <span>{onlineStatus ? 'ONLINE' : 'OFFLINE'}</span>
                 </div>
-            </div>
-            <div className="w-full flex flex-wrap items-center justify-start gap-2">
-                <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="border-primary/50 uppercase">
-                    <RotateCw className="mr-2 h-4 w-4" /> ATUALIZAR
-                </Button>
-                <div className="flex items-center justify-center p-2 bg-primary text-primary-foreground rounded-md text-sm font-medium uppercase h-9">
-                  IDs: {filteredData.length}
-                </div>
-                 <Button size="sm" onClick={handleManualSave} disabled={isSaving || isAutoSaving} className="uppercase">
-                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : isAutoSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    {isAutoSaving ? 'SALVANDO...' : 'SALVAR'}
-                </Button>
-                 <ViewButtons />
-                <Button size="sm" variant="outline" onClick={handleDownloadTemplate} className="border-primary/50 uppercase">
-                    <Download className="mr-2 h-4 w-4" />
-                    TEMPLATE
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="border-primary/50 uppercase"><Columns className="mr-2 h-4 w-4" /> Colunas</Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-64">
-                    <DropdownMenuLabel>Exibir/Ocultar Colunas</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <ScrollArea className="h-72">
-                        <div className="p-2">
-                        {headers.map((header) => (
-                          <DropdownMenuCheckboxItem
-                            key={header}
-                            className="capitalize"
-                            checked={columnVisibility[header] ?? true}
-                            onCheckedChange={(value) =>
-                              setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
-                            }
-                             onSelect={(e) => e.preventDefault()}
-                          >
-                            {header}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                        </div>
-                    </ScrollArea>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
+          </div>
+          <div className="w-full">
+            <CardTitle className="text-2xl font-bold text-primary">{currentProject?.name || 'Carregando Projeto...'}</CardTitle>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
