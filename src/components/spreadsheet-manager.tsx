@@ -962,7 +962,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   };
 
   const handleDownloadTemplate = () => {
-    const templateLink = "https://docs.google.com/spreadsheets/d/1ZiWhG9YHXXHH3AgvqUwaHV9CGkUCGTieiQbefK5lMZI/copy";
+    const templateLink = "https://docs.google.com/spreadsheets/d/1GsE_XHA3G3eHt_aAUd9Du5LawIWWn64zUQNTycNCLM4/edit?usp=sharing";
     toast({
       title: "Copiando Template...",
       description: "Faça uma cópia para seu projeto e dê um nome à nova planilha.",
@@ -1402,10 +1402,6 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                   {isAutoSaving ? 'SALVANDO...' : 'SALVAR'}
               </Button>
                <ViewButtons />
-              <Button size="sm" variant="outline" onClick={handleDownloadTemplate} className="border-primary/50 uppercase">
-                  <Download className="mr-2 h-4 w-4" />
-                  TEMPLATE
-              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="border-primary/50 uppercase"><Columns className="mr-2 h-4 w-4" /> COLUNAS</Button>
