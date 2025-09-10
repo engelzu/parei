@@ -1389,15 +1389,15 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         </div>
       )}
       <CardHeader>
-        <div className="flex flex-col items-center gap-4">
-            <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-2">
-                <CardTitle className="text-2xl font-bold text-primary text-center">{currentProject?.name || 'Carregando Projeto...'}</CardTitle>
+        <div className="flex flex-col items-start gap-4">
+            <div className="w-full flex items-center justify-between flex-wrap gap-x-4 gap-y-2">
+                <CardTitle className="text-2xl font-bold text-primary">{currentProject?.name || 'Carregando Projeto...'}</CardTitle>
                 <div className={cn("flex items-center gap-2 text-sm font-semibold", onlineStatus ? 'text-green-600' : 'text-red-600')}>
                     {onlineStatus ? <Wifi className="h-4 w-4"/> : <WifiOff className="h-4 w-4" />}
                     <span>{onlineStatus ? 'ONLINE' : 'OFFLINE'}</span>
                 </div>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-2">
+            <div className="w-full flex flex-wrap items-center justify-start gap-2">
                 <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="border-primary/50 uppercase">
                     <RotateCw className="mr-2 h-4 w-4" /> ATUALIZAR
                 </Button>
