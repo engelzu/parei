@@ -1439,29 +1439,12 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     </ScrollArea>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <div className="relative w-full max-w-sm sm:w-auto">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Pesquisar em toda a base..."
-                        value={searchTerm}
-                        onChange={e => {
-                          setSearchTerm(e.target.value)
-                          setCurrentPage(1)
-                        }}
-                        className="pl-10 pr-10 w-full h-9 rounded-md bg-card"
-                    />
-                    {searchTerm && (
-                        <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
-                            <X className="h-4 w-4" />
-                        </Button>
-                    )}
-                </div>
             </div>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-wrap items-end gap-4 mb-4">
-            <div className="flex-1 min-w-[250px]">
+        <div className="flex flex-wrap items-end gap-2 mb-4">
+            <div className="flex-1 min-w-[200px]">
                 <Label className="text-xs font-medium text-primary">SELECIONAR PROJETO</Label>
                 <Select onValueChange={handleProjectChange} value={currentSheetId || ''} disabled={isLoadingProject}>
                 <SelectTrigger className="w-full mt-1 h-9 rounded-md">
@@ -1480,7 +1463,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                 <DialogTrigger asChild>
                     <Button variant="outline" className="border-primary/50 uppercase h-9">
                         <PlusCircle className="mr-2 h-4 w-4" />
-                        Adicionar Projeto
+                        Adicionar
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
@@ -1530,8 +1513,26 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
             </Dialog>
             <Button variant="outline" className="border-primary/50 uppercase h-9" onClick={handleDownloadTemplate}>
                 <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Baixar Template
+                Template
             </Button>
+             <div className="relative flex-1 min-w-[200px]">
+                <Label className="text-xs font-medium text-primary">PESQUISAR</Label>
+                <Search className="absolute left-3 top-1/2 mt-1.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Pesquisar em toda a base..."
+                    value={searchTerm}
+                    onChange={e => {
+                      setSearchTerm(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    className="pl-10 pr-10 w-full h-9 rounded-md bg-card mt-1"
+                />
+                {searchTerm && (
+                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 h-7 w-7 mt-0.5" onClick={() => setSearchTerm('')}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                )}
+            </div>
         </div>
 
         <div className="md:hidden mb-4">
