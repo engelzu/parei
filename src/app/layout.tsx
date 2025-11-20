@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'PAREI v1.1 - Gestão de Planilha',
+  title: 'PAREI v1.1 - GESTOR DE PARADAS INDUSTRIAIS',
   description: 'Gerencie sua planilha do Google Sheets com facilidade.',
 };
 

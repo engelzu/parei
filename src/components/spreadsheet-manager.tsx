@@ -1,6 +1,8 @@
+
+
 'use client';
 
-import { useState, useMemo, useEffect, useTransition, type FC } from 'react';
+import { useState, useMemo, useEffect, useTransition, type FC, useCallback } from 'react';
 import {
   Table,
   TableBody,
@@ -16,6 +18,14 @@ import {
   CardTitle,
   CardDescription
 } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -39,12 +49,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { saveDataToSheet } from '@/app/actions';
+import { saveDataToSheet, saveSingleRow } from '@/app/actions';
 import type { SheetRow } from '@/lib/types';
 import {
   RotateCw,
   Filter,
-  X,
   Save,
   Loader2,
   AlertTriangle,
@@ -53,40 +62,134 @@ import {
   Search,
   Columns,
   BarChart,
+  Download,
+  Eraser,
+  X,
+  LineChart as LineChartIcon,
+  TableIcon,
+  AreaChart,
+  History,
+  CheckCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProgressChart, type ChartData } from '@/components/progress-chart';
+import { PlannedRealizedChart, type LineChartData } from '@/components/line-chart';
+import { AreaProgressChart, type AreaProgressChartData } from '@/components/area-progress-chart';
+import { DailyProgressChart, type DailyProgressChartData } from '@/components/daily-progress-chart';
+
 
 interface SpreadsheetManagerProps {
   initialData: SheetRow[];
   initialHeaders: string[];
   initialError: string | null;
+  initialLogData?: any[];
 }
 
 const ROWS_PER_PAGE = 15;
 const COLUMN_VISIBILITY_KEY = 'parei-column-visibility';
 
+
+// Function to convert Excel serial number to JavaScript Date
+function excelSerialToDate(serial: number) {
+    if (typeof serial !== 'number' || isNaN(serial)) {
+        return null;
+    }
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    const isoDate = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
+    if (isNaN(isoDate.getTime())) {
+        return null;
+    }
+    return isoDate;
+}
+
+function parseDate(value: any): Date | null {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    
+    if (typeof value === 'number') {
+        return excelSerialToDate(value);
+    }
+    
+    if (typeof value === 'string') {
+        // Try parsing dd/mm/yyyy
+        const parts = value.split('/');
+        if (parts.length === 3) {
+            const date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00Z`);
+            if (!isNaN(date.getTime())) return date;
+        }
+        // Try parsing ISO string
+        const isoDate = new Date(value);
+        if (!isNaN(isoDate.getTime())) return isoDate;
+    }
+
+    return null;
+}
+
+const reorderHeaders = (headers: string[]): string[] => {
+    let newHeaders = [...headers];
+
+    // Ensure special columns exist
+    if (!newHeaders.includes('STATUS')) newHeaders.push('STATUS');
+    if (!newHeaders.includes('PREVISTO')) newHeaders.push('PREVISTO');
+    if (!newHeaders.includes('DESVIO')) newHeaders.push('DESVIO');
+    if (!newHeaders.includes('ID')) newHeaders.push('ID');
+    
+    // Remove from current positions to re-insert later
+    const columnsToMove = ['ID', 'AVANÇO', 'STATUS', 'ORDEM', 'PREVISTO', 'DESVIO'];
+    newHeaders = newHeaders.filter(h => !columnsToMove.includes(h));
+
+    // Add columns in the desired order
+    newHeaders.unshift('ID', 'AVANÇO', 'STATUS', 'ORDEM');
+    
+    const terminoPrevistoIndex = newHeaders.indexOf('TÉRMINO PREVISTO');
+    if(terminoPrevistoIndex !== -1) {
+        newHeaders.splice(terminoPrevistoIndex + 1, 0, 'PREVISTO', 'DESVIO');
+    } else {
+        newHeaders.push('PREVISTO', 'DESVIO');
+    }
+
+    return Array.from(new Set(newHeaders));
+};
+
+function formatDateValue(value: any): string {
+    const date = parseDate(value);
+    if (date) {
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const year = date.getUTCFullYear();
+        return `${day}/${month}/${year}`;
+    }
+    return String(value || '-');
+}
+
+
 export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   initialData,
   initialHeaders,
   initialError,
+  initialLogData = [],
 }) => {
   const [allData, setAllData] = useState<SheetRow[]>(initialData);
-  const [headers] = useState<string[]>(initialHeaders);
+  const [headers] = useState<string[]>(() => reorderHeaders(initialHeaders));
   const [error, setError] = useState<string | null>(initialError);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({
     'ÁREA': [],
     'RESPONSÁVEL': [],
-    'ATUALIZADOR 1': [],
+    'ATUALIZADOR 1(EMAIL)': [],
   });
+  const [resumoFilter, setResumoFilter] = useState<'all' | 'sim' | 'não'>('all');
+  const [caminhoCriticoFilter, setCaminhoCriticoFilter] = useState<'all' | 'sim' | 'não'>('all');
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [lastUpdated, setLastUpdated] = useState('');
   const [isSaving, startSaving] = useTransition();
   const [isMobileFilterOpen, setMobileFilterOpen] = useState(false);
   const { toast } = useToast();
-  const [currentView, setCurrentView] = useState<'table' | 'chart'>('table');
+  const [currentView, setCurrentView] = useState<'table' | 'bar-chart' | 'line-chart' | 'area-progress-chart' | 'daily-log-chart'>('table');
+  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  const [updatedRows, setUpdatedRows] = useState<SheetRow[]>([]);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
 
 
   useEffect(() => {
@@ -100,16 +203,26 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         try {
             const parsedVisibility = JSON.parse(savedVisibility);
             headers.forEach(header => {
-                initialVisibility[header] = parsedVisibility[header] ?? true;
+                initialVisibility[header] = parsedVisibility[header] ?? !header.toLowerCase().startsWith('curva');
             });
         } catch (e) {
             headers.forEach(header => {
-                initialVisibility[header] = true;
+                const lowerHeader = header.toLowerCase();
+                if (['id', 'avanço', 'status', 'ordem'].includes(lowerHeader)) {
+                    initialVisibility[header] = true;
+                } else {
+                    initialVisibility[header] = !lowerHeader.startsWith('curva');
+                }
             });
         }
     } else {
         headers.forEach(header => {
-            initialVisibility[header] = true;
+            const lowerHeader = header.toLowerCase();
+             if (['id', 'avanço', 'status', 'ordem'].includes(lowerHeader)) {
+                initialVisibility[header] = true;
+            } else {
+                initialVisibility[header] = !lowerHeader.startsWith('curva');
+            }
         });
     }
     setColumnVisibility(initialVisibility);
@@ -129,7 +242,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     const options: Record<string, string[]> = {
       'ÁREA': [],
       'RESPONSÁVEL': [],
-      'ATUALIZADOR 1': [],
+      'ATUALIZADOR 1(EMAIL)': [],
     };
     if (initialData.length > 0) {
       const area = new Set<string>();
@@ -142,7 +255,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
       });
       options['ÁREA'] = Array.from(area).sort();
       options['RESPONSÁVEL'] = Array.from(responsavel).sort();
-      options['ATUALIZADOR 1'] = Array.from(atualizador1).sort();
+      options['ATUALIZADOR 1(EMAIL)'] = Array.from(atualizador1).sort();
     }
     return options;
   }, [initialData]);
@@ -150,15 +263,65 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
   const processedData = useMemo(() => {
     let dataToProcess = JSON.parse(JSON.stringify(allData));
     const orderGroups: Record<string, SheetRow[]> = {};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); 
 
     dataToProcess.forEach((row: SheetRow) => {
-        const order = String(row['ORDEM'] || '');
-        if (order) {
-            if (!orderGroups[order]) {
-                orderGroups[order] = [];
+      // Add ID column
+      row['ID'] = row['id'];
+
+      // Calculate PREVISTO and DESVIO
+      const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
+      const endDate = parseDate(row['TÉRMINO DA LINHA DE BASE']);
+      
+      let previsto = 0;
+      if (startDate && endDate && String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
+        if (today.getTime() >= endDate.getTime()) {
+          previsto = 100;
+        } else if (today.getTime() < startDate.getTime()){
+          previsto = 0;
+        } else {
+            const totalDuration = endDate.getTime() - startDate.getTime();
+            if (totalDuration > 0) {
+                const elapsedDuration = today.getTime() - startDate.getTime();
+                previsto = Math.max(0, Math.min(100, (elapsedDuration / totalDuration) * 100));
+            } else if (today.getTime() >= startDate.getTime()) {
+                previsto = 100;
             }
-            orderGroups[order].push(row);
         }
+
+        row['PREVISTO'] = `${Math.round(previsto)}%`;
+        
+        const avanco = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
+        const desvio = avanco - previsto;
+        row['DESVIO'] = `${Math.round(desvio)}%`;
+
+      } else {
+        row['PREVISTO'] = '-';
+        row['DESVIO'] = '-';
+      }
+
+      // Calculate STATUS
+      const avancoNum = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
+      if (isFinite(avancoNum)) {
+        if (avancoNum === 100) {
+          row['STATUS'] = 'CON';
+        } else if (avancoNum > 0) {
+          row['STATUS'] = 'AND';
+        } else {
+          row['STATUS'] = 'NI';
+        }
+      } else {
+        row['STATUS'] = 'NI';
+      }
+
+      const order = String(row['ORDEM'] || '');
+      if (order) {
+          if (!orderGroups[order]) {
+              orderGroups[order] = [];
+          }
+          orderGroups[order].push(row);
+      }
     });
 
     Object.values(orderGroups).forEach(group => {
@@ -167,7 +330,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
         if (summaryRow && childRows.length > 0) {
             const totalAdvance = childRows.reduce((sum, child) => {
-                const advance = parseInt(String(child['AVANÇO'] || '0').replace('%', ''), 10) || 0;
+                const advance = parseFloat(String(child['AVANÇO'] || '0').replace('%', '')) || 0;
                 return sum + advance;
             }, 0);
             
@@ -186,6 +349,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const filteredData = useMemo(() => {
     let data = [...processedData];
+    // Search filter
     if (searchTerm) {
       data = data.filter(row =>
         Object.values(row).some(value =>
@@ -193,37 +357,273 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
         )
       );
     }
+    // Column filters
     data = data.filter(row => {
       if (activeFilters['ÁREA'].length > 0 && !activeFilters['ÁREA'].includes(String(row['ÁREA']))) return false;
       if (activeFilters['RESPONSÁVEL'].length > 0 && !activeFilters['RESPONSÁVEL'].includes(String(row['RESPONSÁVEL']))) return false;
-      if (activeFilters['ATUALIZADOR 1'].length > 0 && !activeFilters['ATUALIZADOR 1'].includes(String(row['ATUALIZADOR 1(EMAIL)']))) return false;
+      if (activeFilters['ATUALIZADOR 1(EMAIL)'].length > 0 && !activeFilters['ATUALIZADOR 1(EMAIL)'].includes(String(row['ATUALIZADOR 1(EMAIL)']))) return false;
       return true;
     });
+
+    // Resumo filter
+    if (resumoFilter !== 'all') {
+      data = data.filter(row => String(row['RESUMO(SIM/NÃO)']).toLowerCase() === resumoFilter);
+    }
+
+    // Caminho Crítico filter
+    if (caminhoCriticoFilter !== 'all') {
+      data = data.filter(row => String(row['CAMINHO CRÍTICO(SIM/NÃO)']).toLowerCase() === caminhoCriticoFilter);
+    }
+
     return data;
-  }, [processedData, searchTerm, activeFilters]);
+  }, [processedData, searchTerm, activeFilters, resumoFilter, caminhoCriticoFilter]);
   
-  const chartData = useMemo<ChartData[]>(() => {
-    const dataByArea: Record<string, { total: number; count: number }> = {};
+  const progressByUpdater = useMemo(() => {
+    const selectedUpdater = activeFilters['ATUALIZADOR 1(EMAIL)']?.[0];
+    if (!selectedUpdater || selectedUpdater === 'all') return null;
+
+    const updaterTasks = processedData.filter(
+      (row) =>
+        String(row['ATUALIZADOR 1(EMAIL)']) === selectedUpdater &&
+        String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não'
+    );
+    
+    if (updaterTasks.length === 0) return 0;
+
+    const totalAdvance = updaterTasks.reduce((sum, task) => {
+      const advance = parseFloat(String(task['AVANÇO'] || '0').replace('%', ''));
+      return sum + (isNaN(advance) ? 0 : advance);
+    }, 0);
+
+    return Math.round(totalAdvance / updaterTasks.length);
+  }, [activeFilters, processedData]);
+
+ const barChartData = useMemo<ChartData[]>(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dataByArea: Record<string, { 'CON': number, 'AND': number, 'NI': number, 'ATR': number }> = {};
+
+    filteredData.forEach(row => {
+        const area = String(row['ÁREA'] || 'N/A');
+        if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
+            if (!dataByArea[area]) {
+                dataByArea[area] = { 'CON': 0, 'AND': 0, 'NI': 0, 'ATR': 0 };
+            }
+
+            const avancoNum = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
+            const startDate = parseDate(row['INÍCIO DA LINHA DE BASE']);
+
+            if (avancoNum === 100) {
+                dataByArea[area]['CON']++;
+            } else if (avancoNum > 0) {
+                dataByArea[area]['AND']++;
+            } else { // avancoNum is 0 or NaN
+                dataByArea[area]['NI']++;
+                if (startDate && startDate.getTime() < today.getTime()) {
+                    dataByArea[area]['ATR']++;
+                }
+            }
+        }
+    });
+
+    return Object.keys(dataByArea)
+      .map(area => ({
+        area,
+        'CONCLUÍDO': dataByArea[area]['CON'],
+        'EM ANDAMENTO': dataByArea[area]['AND'],
+        'NÃO INICIADO': dataByArea[area]['NI'],
+        'ATRASADA': dataByArea[area]['ATR'],
+      }))
+      .sort((a, b) => a.area.localeCompare(b.area));
+  }, [filteredData]);
+
+
+  const lineChartDataByArea = useMemo<Record<string, LineChartData[]>>(() => {
+    const dataByArea: Record<string, { 
+        totalRealizado: number; 
+        totalPrevisto: number; 
+        count: number;
+        endDate: Date | null;
+    }> = {};
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    filteredData.forEach(row => {
+        const area = String(row['ÁREA'] || 'N/A');
+        if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
+            const realizado = parseInt(String(row['AVANÇO'] || '0').replace('%', ''), 10);
+            const previsto = parseInt(String(row['PREVISTO'] || '0').replace('%', ''), 10);
+            const endDate = parseDate(row['TÉRMINO DA LINHA DE BASE']);
+
+            if (!dataByArea[area]) {
+                dataByArea[area] = { totalRealizado: 0, totalPrevisto: 0, count: 0, endDate: null };
+            }
+
+            if (!isNaN(realizado)) {
+                dataByArea[area].totalRealizado += realizado;
+            }
+            if (!isNaN(previsto)) {
+                dataByArea[area].totalPrevisto += previsto;
+            }
+            if(!isNaN(realizado) || !isNaN(previsto)) {
+               dataByArea[area].count++;
+            }
+            if (endDate && (!dataByArea[area].endDate || endDate > dataByArea[area].endDate!)) {
+                dataByArea[area].endDate = endDate;
+            }
+        }
+    });
+    
+    const chartData: Record<string, LineChartData[]> = {};
+    for (const area in dataByArea) {
+      const areaData = dataByArea[area];
+      const realizado = areaData.count > 0 ? Math.round(areaData.totalRealizado / areaData.count) : 0;
+      const previsto = areaData.count > 0 ? Math.round(areaData.totalPrevisto / areaData.count) : 0;
+      const gap = realizado - previsto;
+
+      let diasRestantes = 0;
+      if (areaData.endDate) {
+          const diffTime = areaData.endDate.getTime() - today.getTime();
+          diasRestantes = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+      }
+
+      chartData[area] = [{
+        name: area,
+        realizado,
+        previsto,
+        gap,
+        diasRestantes,
+      }];
+    }
+
+    return chartData;
+  }, [filteredData]);
+
+  const areaProgressChartData = useMemo<AreaProgressChartData[]>(() => {
+    const dataByArea: Record<string, { totalAdvance: number; count: number }> = {};
 
     filteredData.forEach(row => {
       const area = String(row['ÁREA'] || 'N/A');
       if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não') {
-        const advance = parseInt(String(row['AVANÇO'] || '0').replace('%', ''), 10);
         if (!dataByArea[area]) {
-          dataByArea[area] = { total: 0, count: 0 };
+          dataByArea[area] = { totalAdvance: 0, count: 0 };
         }
-        dataByArea[area].total += advance;
-        dataByArea[area].count++;
+        const advance = parseFloat(String(row['AVANÇO'] || '0').replace('%', ''));
+        if (!isNaN(advance)) {
+          dataByArea[area].totalAdvance += advance;
+          dataByArea[area].count++;
+        }
       }
     });
 
     return Object.keys(dataByArea)
       .map(area => ({
         area,
-        avanco: dataByArea[area].count > 0 ? Math.round(dataByArea[area].total / dataByArea[area].count) : 0,
+        'AVANÇO MÉDIO': dataByArea[area].count > 0 ? Math.round(dataByArea[area].totalAdvance / dataByArea[area].count) : 0,
       }))
-      .sort((a, b) => b.avanco - a.avanco);
+      .sort((a, b) => a['AVANÇO MÉDIO'] - b['AVANÇO MÉDIO']);
   }, [filteredData]);
+  
+  const { dailyLogChartData, dailyLogChartKeys } = useMemo(() => {
+    if (!initialLogData || initialLogData.length === 0 || initialData.length === 0) {
+        return { dailyLogChartData: [], dailyLogChartKeys: [] };
+    }
+
+    // 1. Create a map of task ID to its area for all non-summary tasks
+    const taskToAreaMap = initialData.reduce((acc, row) => {
+        if (String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não' && row.id) {
+            acc[String(row.id)] = String(row['ÁREA'] || 'N/A');
+        }
+        return acc;
+    }, {} as Record<string, string>);
+
+    const allAreas = Array.from(new Set(Object.values(taskToAreaMap))).sort();
+
+    // 2. Group logs by date, ensuring we only consider tasks with a mapped area
+    const logsByDate: Record<string, { taskId: string; progress: number }[]> = {};
+    initialLogData.forEach(log => {
+        const taskId = String(log.ID_TAREFA);
+        if (taskToAreaMap[taskId]) { // Only process logs for relevant tasks
+            try {
+                const timestamp = new Date(log.TIMESTAMP);
+                if (isNaN(timestamp.getTime())) return;
+                const dateStr = timestamp.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' });
+                if (!logsByDate[dateStr]) {
+                    logsByDate[dateStr] = [];
+                }
+                logsByDate[dateStr].push({
+                    taskId,
+                    progress: parseFloat(String(log.AVANCO_PERCENTUAL)),
+                });
+            } catch (e) { /* Ignore malformed logs */ }
+        }
+    });
+
+    // 3. Get sorted list of dates with logs
+    const sortedDates = Object.keys(logsByDate).sort((a, b) => {
+        const [dayA, monthA, yearA] = a.split('/');
+        const [dayB, monthB, yearB] = b.split('/');
+        return new Date(`20${yearA}-${monthA}-${dayA}`).getTime() - new Date(`20${yearB}-${monthB}-${dayB}`).getTime();
+    });
+
+    if (sortedDates.length === 0) {
+        return { dailyLogChartData: [], dailyLogChartKeys: [] };
+    }
+
+    // 4. Iterate through dates, building a cumulative state of progress
+    const dailyStates: DailyProgressChartData[] = [];
+    // Initialize currentTaskProgress with 0 for all tasks
+    const currentTaskProgress: Record<string, number> = {};
+    Object.keys(taskToAreaMap).forEach(taskId => {
+        currentTaskProgress[taskId] = 0;
+    });
+
+    for (const date of sortedDates) {
+        const todaysLogs = logsByDate[date] || [];
+        // Update the progress state with the latest log for each task on this day
+        todaysLogs.forEach(log => {
+            if (typeof log.progress === 'number' && !isNaN(log.progress)) {
+                currentTaskProgress[log.taskId] = log.progress;
+            }
+        });
+
+        // Calculate the average progress for each area based on the current state
+        const progressByArea: Record<string, { total: number; count: number }> = {};
+        allAreas.forEach(area => {
+            progressByArea[area] = { total: 0, count: 0 };
+        });
+
+        Object.keys(currentTaskProgress).forEach(taskId => {
+            const area = taskToAreaMap[taskId];
+            if (area) { // Area will always exist due to the initial filter
+                progressByArea[area].total += currentTaskProgress[taskId];
+                progressByArea[area].count++;
+            }
+        });
+        
+        // Create the chart entry for the current date
+        const chartEntry: DailyProgressChartData = { date };
+        allAreas.forEach(area => {
+            const areaData = progressByArea[area];
+            chartEntry[area] = areaData.count > 0 ? Math.round(areaData.total / areaData.count) : 0;
+        });
+        dailyStates.push(chartEntry);
+    }
+    
+    return { dailyLogChartData: dailyStates, dailyLogChartKeys: allAreas };
+}, [initialLogData, initialData]);
+
+
+  const selectedOrderTasks = useMemo(() => {
+      if (!selectedOrder) return [];
+      return processedData.filter(row => 
+          String(row['ORDEM']) === selectedOrder && 
+          String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não'
+      );
+  }, [processedData, selectedOrder]);
+
 
   const totalPages = Math.ceil(filteredData.length / ROWS_PER_PAGE);
   const paginatedData = useMemo(() => {
@@ -238,41 +638,92 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     }));
     setCurrentPage(1);
   };
-  
+
   const handleAdvanceChange = (id: number, increment: boolean) => {
-    setAllData(prevData =>
-      prevData.map(row => {
-        if (row.id === id) {
-          const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
-          const newValue = increment ? Math.min(100, current + 5) : Math.max(0, current - 5);
-          return { ...row, 'AVANÇO': `${newValue}%` };
-        }
-        return row;
-      })
-    );
+    let updatedRow: SheetRow | undefined;
+    
+    // First, update the local state immediately for a responsive UI
+    setAllData(currentData => {
+        const newData = currentData.map(row => {
+            if (row.id === id) {
+                const current = parseInt(String(row['AVANÇO'] || '0').replace('%', '')) || 0;
+                const newValue = increment ? Math.min(100, current + 5) : Math.max(0, current - 5);
+                const newRow = { ...row, 'AVANÇO': `${newValue}%` };
+                updatedRow = newRow;
+                return newRow;
+            }
+            return row;
+        });
+        return newData;
+    });
+
+    // Then, trigger the save operation in the background
+    if (updatedRow) {
+        setIsAutoSaving(true);
+        startSaving(async () => {
+            const result = await saveSingleRow(updatedRow!);
+            if (!result.success) {
+                toast({
+                    variant: "destructive",
+                    title: "Erro no Salvamento Automático",
+                    description: result.message,
+                });
+                // Optional: Revert local state if save fails
+                setAllData(initialData); 
+            }
+             setIsAutoSaving(false);
+        });
+    }
   };
 
-  const handleSave = () => {
+
+  const handleOrderClick = (order: string) => {
+    if (!order || order === '-') return;
+    setSelectedOrder(order);
+  };
+
+  const handleManualSave = () => {
     startSaving(async () => {
-      const result = await saveDataToSheet(headers, allData);
-      if (result.success) {
-        toast({
-          title: "Sucesso!",
-          description: "Os dados foram salvos na planilha.",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Erro ao Salvar",
-          description: result.message || 'Ocorreu um erro desconhecido ao salvar os dados.',
-        });
-      }
+        const result = await saveDataToSheet(reorderHeaders(initialHeaders), allData, updatedRows);
+        if (result.success) {
+            setUpdatedRows([]); // Clear updated rows after successful save
+            toast({
+                title: "Salvo com sucesso!",
+                description: "Suas alterações foram gravadas na planilha.",
+                duration: 3000,
+            });
+             window.location.reload();
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Erro ao Salvar",
+                description: result.message || 'Ocorreu um erro desconhecido ao salvar os dados.',
+            });
+        }
     });
+  };
+
+  const handleExport = async () => {
+    const XLSX = await import('xlsx');
+    const dataToExport = filteredData.map(row => {
+        const newRow: Record<string, any> = {};
+        headers.forEach(header => {
+            newRow[header] = row[header];
+        });
+        return newRow;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport, { header: headers });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Dados");
+    XLSX.writeFile(workbook, "dados_exportados.xlsx");
   };
   
   const clearFilters = () => {
     setSearchTerm('');
-    setActiveFilters({ 'ÁREA': [], 'RESPONSÁVEL': [], 'ATUALIZADOR 1': [] });
+    setActiveFilters({ 'ÁREA': [], 'RESPONSÁVEL': [], 'ATUALIZADOR 1(EMAIL)': [] });
+    setResumoFilter('all');
+    setCaminhoCriticoFilter('all');
     setCurrentPage(1);
   };
   
@@ -309,25 +760,100 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
 
   const FilterControls = ({ inSheet = false }) => (
     <>
-      {Object.keys(filterOptions).map(filterName => (
-        <div key={filterName} className="flex-1 min-w-[150px]">
-          <Label className="text-xs font-medium text-muted-foreground">{filterName}</Label>
+      <div className="flex-1 min-w-[150px] text-center">
+          <Label className="text-xs font-medium text-primary">TIPO DE LINHA (RESUMO)</Label>
           <Select
-            value={activeFilters[filterName]?.[0] || 'all'}
-            onValueChange={(value) => handleFilterChange(filterName, value)}
+            value={resumoFilter}
+            onValueChange={(value) => {
+              setResumoFilter(value as 'all' | 'sim' | 'não');
+              setCurrentPage(1);
+            }}
           >
             <SelectTrigger className="w-full mt-1 h-9 rounded-md">
-              <SelectValue placeholder={`Selecionar ${filterName}`} />
+              <SelectValue placeholder="Selecionar Tipo" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {filterOptions[filterName as keyof typeof filterOptions].map(option => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
-              ))}
+              <SelectItem value="all">Todos (Sim e Não)</SelectItem>
+              <SelectItem value="sim" className="focus:bg-accent focus:text-accent-foreground font-bold text-primary">Apenas Resumo (Sim)</SelectItem>
+              <SelectItem value="não">Apenas Tarefas (Não)</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-      ))}
+      </div>
+      <div className="flex-1 min-w-[150px] text-center">
+          <Label className="text-xs font-medium text-primary">CAMINHO CRÍTICO</Label>
+          <Select
+            value={caminhoCriticoFilter}
+            onValueChange={(value) => {
+              setCaminhoCriticoFilter(value as 'all' | 'sim' | 'não');
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full mt-1 h-9 rounded-md">
+              <SelectValue placeholder="Selecionar" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos (Sim e Não)</SelectItem>
+              <SelectItem value="sim">Sim</SelectItem>
+              <SelectItem value="não">Não</SelectItem>
+            </SelectContent>
+          </Select>
+      </div>
+      <div className="flex-1 min-w-[150px] text-center">
+        <Label className="text-xs font-medium text-primary">ÁREA</Label>
+        <Select
+          value={activeFilters['ÁREA']?.[0] || 'all'}
+          onValueChange={(value) => handleFilterChange('ÁREA', value)}
+        >
+          <SelectTrigger className="w-full mt-1 h-9 rounded-md">
+            <SelectValue placeholder="Selecionar ÁREA" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {filterOptions['ÁREA']?.map(option => (
+              <SelectItem key={option} value={option}>{option}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+       <div className="flex-1 min-w-[150px] text-center">
+        <Label className="text-xs font-medium text-primary">RESPONSÁVEL</Label>
+        <Select
+          value={activeFilters['RESPONSÁVEL']?.[0] || 'all'}
+          onValueChange={(value) => handleFilterChange('RESPONSÁVEL', value)}
+        >
+          <SelectTrigger className="w-full mt-1 h-9 rounded-md">
+            <SelectValue placeholder="Selecionar RESPONSÁVEL" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {filterOptions['RESPONSÁVEL']?.map(option => (
+              <SelectItem key={option} value={option}>{option}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex-1 min-w-[150px] text-center">
+        {progressByUpdater !== null && (
+            <div className="text-xs font-bold text-primary mb-1">
+                AVANÇO MÉDIO: {progressByUpdater}%
+            </div>
+        )}
+        <Label className="text-xs font-medium text-primary">ATUALIZADOR 1</Label>
+        <Select
+          value={activeFilters['ATUALIZADOR 1(EMAIL)']?.[0] || 'all'}
+          onValueChange={(value) => handleFilterChange('ATUALIZADOR 1(EMAIL)', value)}
+        >
+          <SelectTrigger className="w-full mt-1 h-9 rounded-md">
+            <SelectValue placeholder="Selecionar ATUALIZADOR 1" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {filterOptions['ATUALIZADOR 1(EMAIL)']?.map(option => (
+              <SelectItem key={option} value={option}>{option}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       {inSheet && (
           <Button onClick={() => setMobileFilterOpen(false)} className="w-full">Aplicar Filtros</Button>
       )}
@@ -338,7 +864,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     return (
       <Card className="border-0 shadow-none sm:border sm:shadow-sm">
         <CardHeader>
-            <CardTitle>PAREI v1.1</CardTitle>
+            <CardTitle>PAREI v1.1 - GESTOR DE PARADAS INDUSTRIAIS</CardTitle>
         </CardHeader>
         <CardContent>
             <Alert variant="destructive">
@@ -351,52 +877,273 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
     );
   }
 
+  const renderContent = () => {
+    switch (currentView) {
+      case 'table':
+        return (
+          <>
+            <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+              <div className="h-[65vh] overflow-auto">
+                <Table className="relative min-w-full text-xs">
+                  <TableHeader className="sticky top-0 z-10 bg-primary">
+                    <TableRow className="border-b-0 hover:bg-primary/90">
+                      {visibleHeaders.map(header => (
+                        <TableHead key={header} className="whitespace-nowrap border-r text-center text-primary-foreground p-2">{header}</TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedData.length > 0 ? (
+                      paginatedData.map(row => (
+                        <TableRow 
+                          key={row.id}
+                           className={cn('bg-card', {
+                            'font-bold italic text-white bg-green-500 hover:bg-green-500/90': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
+                          })}
+                        >
+                          {visibleHeaders.map(header => {
+                            const isSummaryRow = String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim';
+                            let cellContent;
+
+                            if (header === 'INÍCIO DA LINHA DE BASE' || header === 'TÉRMINO DA LINHA DE BASE') {
+                                cellContent = formatDateValue(row[header]);
+                            } else if (header === 'AVANÇO') {
+                                if (isSummaryRow) {
+                                    cellContent = (
+                                        <span className="text-base font-bold">
+                                            {row[header] || '0%'}
+                                        </span>
+                                    );
+                                } else {
+                                    cellContent = (
+                                      <div className="flex items-center justify-center gap-0.5">
+                                        <Button 
+                                          size="icon" 
+                                          variant="ghost" 
+                                          className="h-5 w-5" 
+                                          onClick={() => handleAdvanceChange(row.id, false)}
+                                        >
+                                          <ChevronDown className="h-3 w-3"/>
+                                        </Button>
+                                        <span className="w-8 text-center font-medium">{row[header] || '0%'}</span>
+                                        <Button 
+                                          size="icon"
+                                          variant="ghost" 
+                                          className="h-5 w-5" 
+                                          onClick={() => handleAdvanceChange(row.id, true)}
+                                        >
+                                          <ChevronUp className="h-3 w-3"/>
+                                        </Button>
+                                      </div>
+                                    );
+                                }
+                            } else if (header === 'ORDEM') {
+                                const orderValue = String(row[header] || '-');
+                                cellContent = (
+                                  <button
+                                    className="text-blue-600 underline disabled:text-muted-foreground disabled:no-underline"
+                                    onClick={() => handleOrderClick(orderValue)}
+                                    disabled={orderValue === '-'}
+                                  >
+                                    {orderValue}
+                                  </button>
+                                );
+                            } else if (header === 'DESVIO') {
+                                const desvioValue = parseFloat(String(row.DESVIO).replace('%', ''));
+                                const colorClass = desvioValue < 0 ? 'text-red-500' : desvioValue > 0 ? 'text-green-500' : 'text-gray-500';
+                                cellContent = <span className={cn('font-bold', colorClass)}>{row.DESVIO}</span>;
+                            } else if (header === 'STATUS') {
+                                const status = String(row.STATUS);
+                                let colorClass = '';
+                                if (status === 'CON') {
+                                  colorClass = 'text-green-500';
+                                } else if (status === 'AND') {
+                                  colorClass = 'text-blue-500';
+                                } else if (status === 'NI') {
+                                  colorClass = 'text-red-500';
+                                } else {
+                                  colorClass = 'text-gray-500';
+                                }
+                                cellContent = <span className={cn('font-bold', colorClass)}>{status}</span>;
+                            } else {
+                                cellContent = String(row[header] || '-');
+                            }
+
+                            return (
+                              <TableCell 
+                                key={`${row.id}-${header}`} 
+                                className={cn("border-r text-center p-1 text-xs", 
+                                  header === 'NOME DA TAREFA' ? 'whitespace-normal max-w-[200px]' : 'whitespace-nowrap',
+                                  isSummaryRow && 'text-white'
+                                )}
+                              >
+                                {cellContent}
+                              </TableCell>
+                            )
+                          })}
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={visibleHeaders.length} className="h-24 text-center">
+                          Nenhum resultado encontrado.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+            <div className="flex items-center justify-between mt-4 flex-wrap gap-4">
+              <p className="text-sm text-muted-foreground">
+                Mostrando {paginatedData.length > 0 ? (currentPage - 1) * ROWS_PER_PAGE + 1 : 0} a {Math.min(currentPage * ROWS_PER_PAGE, filteredData.length)} de {filteredData.length} registros.
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  Anterior
+                </Button>
+                <div className="hidden sm:flex items-center gap-1">{renderPagination()}</div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Próxima
+                </Button>
+              </div>
+            </div>
+          </>
+        );
+      case 'bar-chart':
+        return (
+            <ScrollArea className="h-[70vh] w-full">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {barChartData.map(chartItem => (
+                  <ProgressChart 
+                    key={chartItem.area} 
+                    data={[chartItem]} 
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+        );
+      case 'line-chart':
+          return (
+            <ScrollArea className="h-[70vh] w-full">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {Object.keys(lineChartDataByArea).sort().map(area => (
+                  <PlannedRealizedChart 
+                    key={area} 
+                    data={lineChartDataByArea[area]} 
+                    area={area}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          );
+      case 'area-progress-chart':
+          return (
+            <ScrollArea className="h-[70vh] w-full">
+              <div className="p-4">
+                <AreaProgressChart data={areaProgressChartData} />
+              </div>
+            </ScrollArea>
+          );
+      case 'daily-log-chart':
+          return (
+            <ScrollArea className="h-[70vh] w-full">
+              <div className="p-4">
+                <DailyProgressChart data={dailyLogChartData} dataKeys={dailyLogChartKeys} />
+              </div>
+            </ScrollArea>
+          );
+      default:
+        return null;
+    }
+  };
+
+  const ViewButtons = () => (
+    <>
+      <Button 
+        variant={currentView === 'table' ? 'default' : 'outline'} 
+        size="sm" 
+        onClick={() => setCurrentView('table')} 
+        className="border-primary/50 uppercase"
+      >
+          <TableIcon className="mr-2 h-4 w-4" /> TABELA
+      </Button>
+      <Button 
+        variant={currentView === 'bar-chart' ? 'default' : 'outline'}
+        size="sm" 
+        onClick={() => setCurrentView('bar-chart')} 
+        className="border-primary/50 uppercase"
+      >
+          <BarChart className="mr-2 h-4 w-4" /> GRÁFICO
+      </Button>
+      <Button 
+        variant={currentView === 'line-chart' ? 'default' : 'outline'}
+        size="sm" 
+        onClick={() => setCurrentView('line-chart')} 
+        className="border-primary/50 uppercase"
+      >
+          <LineChartIcon className="mr-2 h-4 w-4" /> CURVA S
+      </Button>
+      <Button 
+        variant={currentView === 'area-progress-chart' ? 'default' : 'outline'}
+        size="sm" 
+        onClick={() => setCurrentView('area-progress-chart')} 
+        className="border-primary/50 uppercase"
+      >
+          <AreaChart className="mr-2 h-4 w-4" /> PROGRESSO
+      </Button>
+      <Button 
+        variant={currentView === 'daily-log-chart' ? 'default' : 'outline'}
+        size="sm" 
+        onClick={() => setCurrentView('daily-log-chart')} 
+        className="border-primary/50 uppercase"
+      >
+          <History className="mr-2 h-4 w-4" /> LOG DIÁRIO
+      </Button>
+    </>
+  );
+
+
   return (
     <Card className="border-0 shadow-none sm:border sm:shadow-sm bg-transparent">
       <CardHeader>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-                <CardTitle className="text-2xl font-bold text-primary">PAREI v1.1</CardTitle>
-                <CardDescription>
+        <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-2">
+                <CardTitle className="text-2xl font-bold text-primary text-center">PAREI v1.1 - GESTOR DE PARADAS INDUSTRIAIS</CardTitle>
+                <CardDescription className="text-primary/70 text-sm">
                     {lastUpdated ? `Última atualização: ${lastUpdated}` : 'Carregando...'}
                 </CardDescription>
             </div>
-            <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                    <RotateCw className="mr-2 h-4 w-4" /> Atualizar
+            <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="border-primary/50 uppercase">
+                    <RotateCw className="mr-2 h-4 w-4" /> ATUALIZAR
                 </Button>
-                 <Button variant="outline" size="sm" onClick={() => setCurrentView(currentView === 'table' ? 'chart' : 'table')}>
-                    <BarChart className="mr-2 h-4 w-4" /> {currentView === 'table' ? 'Gráfico' : 'Tabela'}
+                <div className="flex items-center justify-center p-2 bg-primary text-primary-foreground rounded-md text-sm font-medium uppercase h-9">
+                  IDs: {filteredData.length}
+                </div>
+                 <Button size="sm" onClick={handleManualSave} disabled={isSaving || isAutoSaving} className="uppercase">
+                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : isAutoSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    {isAutoSaving ? 'SALVANDO...' : 'SALVAR'}
                 </Button>
-                <Button size="sm" onClick={handleSave} disabled={isSaving}>
-                    {isSaving ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                        <Save className="mr-2 h-4 w-4" />
-                    )}
-                    Salvar
+                 <ViewButtons />
+                <Button size="sm" variant="outline" onClick={handleExport} className="border-primary/50 uppercase">
+                    <Download className="mr-2 h-4 w-4" />
+                    EXPORTAR
                 </Button>
-            </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col md:flex-row gap-2 mb-4">
-            <div className="relative flex-grow">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Pesquisar em toda a planilha..."
-                    value={searchTerm}
-                    onChange={e => {
-                      setSearchTerm(e.target.value)
-                      setCurrentPage(1)
-                    }}
-                    className="pl-10 w-full h-9 rounded-md bg-card"
-                />
-            </div>
-            <div className="hidden md:flex items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm"><Columns className="mr-2 h-4 w-4" /> Colunas</Button>
+                    <Button variant="outline" size="sm" className="border-primary/50 uppercase"><Columns className="mr-2 h-4 w-4" /> Colunas</Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-64">
                     <DropdownMenuLabel>Exibir/Ocultar Colunas</DropdownMenuLabel>
@@ -411,6 +1158,7 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                             onCheckedChange={(value) =>
                               setColumnVisibility((prev) => ({ ...prev, [header]: !!value }))
                             }
+                             onSelect={(e) => e.preventDefault()}
                           >
                             {header}
                           </DropdownMenuCheckboxItem>
@@ -419,9 +1167,28 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     </ScrollArea>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="ghost" size="sm" onClick={clearFilters}><X className="mr-2 h-4 w-4" />Limpar</Button>
+                <div className="relative w-full max-w-sm sm:w-auto">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Pesquisar em toda a base..."
+                        value={searchTerm}
+                        onChange={e => {
+                          setSearchTerm(e.target.value)
+                          setCurrentPage(1)
+                        }}
+                        className="pl-10 pr-10 w-full h-9 rounded-md bg-card"
+                    />
+                    {searchTerm && (
+                        <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchTerm('')}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                    )}
+                </div>
             </div>
-            <div className="md:hidden">
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="md:hidden mb-4">
               <Sheet open={isMobileFilterOpen} onOpenChange={setMobileFilterOpen}>
                 <SheetTrigger asChild>
                   <Button variant="outline" className="w-full"><Filter className="mr-2 h-4 w-4" />Filtros & Colunas</Button>
@@ -431,7 +1198,13 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                     <ScrollArea className="h-[calc(100%-80px)]">
                         <div className="space-y-4 p-4">
                             <h3 className="font-semibold">Filtros</h3>
-                            <FilterControls inSheet={true} />
+                            <div className="space-y-2">
+                                <Button variant="outline" size="sm" onClick={clearFilters} className="w-full border-primary/50 uppercase">
+                                    <Eraser className="mr-2 h-4 w-4" />
+                                    Limpar Filtros
+                                </Button>
+                                <FilterControls inSheet={true} />
+                            </div>
                             <h3 className="font-semibold pt-4">Colunas Visíveis</h3>
                             <div className="space-y-2">
                                 {headers.map((header) => (
@@ -449,110 +1222,78 @@ export const SpreadsheetManager: FC<SpreadsheetManagerProps> = ({
                             </div>
                         </div>
                     </ScrollArea>
-                    <div className="p-4 border-t">
-                        <Button variant="ghost" onClick={() => { clearFilters(); setMobileFilterOpen(false); }} className="w-full"><X className="mr-2 h-4 w-4" />Limpar Filtros</Button>
-                    </div>
                 </SheetContent>
               </Sheet>
-            </div>
         </div>
-        <div className="hidden md:flex gap-4 mb-4">
+        <div className="hidden md:flex flex-wrap items-end gap-4 mb-4 relative">
+            <Button variant="outline" size="sm" onClick={clearFilters} className="border-primary/50 uppercase">
+                <Eraser className="mr-2 h-4 w-4" />
+                Limpar Filtros
+            </Button>
             <FilterControls />
         </div>
-        {currentView === 'table' ? (
-        <>
-        <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-          <div className="h-[60vh] overflow-auto bg-card">
-            <Table className="relative min-w-full">
-              <TableHeader className="sticky top-0 z-10 bg-secondary">
-                <TableRow className="hover:bg-secondary">
-                  {visibleHeaders.map(header => (
-                    <TableHead key={header} className="whitespace-nowrap bg-inherit border-r">{header}</TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedData.length > 0 ? (
-                  paginatedData.map(row => (
-                    <TableRow 
-                      key={row.id}
-                      className={cn({
-                        'text-destructive font-bold': String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim',
-                      })}
-                    >
-                      {visibleHeaders.map(header => {
-                        const isSummaryRow = String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'sim';
-                        return (
-                          <TableCell key={`${row.id}-${header}`} className="whitespace-nowrap border-r">
-                            {header === 'AVANÇO' ? (
-                              <div className="flex items-center gap-2">
-                                <Button 
-                                  size="icon" 
-                                  variant="ghost" 
-                                  className="h-7 w-7" 
-                                  onClick={() => handleAdvanceChange(row.id, false)}
-                                  disabled={isSummaryRow}
-                                >
-                                  <ChevronDown className="h-4 w-4"/>
-                                </Button>
-                                <span className="w-12 text-center font-medium">{row[header] || '0%'}</span>
-                                <Button 
-                                  size="icon" 
-                                  variant="ghost" 
-                                  className="h-7 w-7" 
-                                  onClick={() => handleAdvanceChange(row.id, true)}
-                                  disabled={isSummaryRow}
-                                >
-                                  <ChevronUp className="h-4 w-4"/>
-                                </Button>
-                              </div>
-                            ) : (
-                              String(row[header] || '-')
-                            )}
-                          </TableCell>
-                        )
-                      })}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={visibleHeaders.length} className="h-24 text-center">
-                      Nenhum resultado encontrado.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
-        <div className="flex items-center justify-between mt-4 flex-wrap gap-4">
-          <p className="text-sm text-muted-foreground">
-            Mostrando {paginatedData.length > 0 ? (currentPage - 1) * ROWS_PER_PAGE + 1 : 0} a {Math.min(currentPage * ROWS_PER_PAGE, filteredData.length)} de {filteredData.length} registros.
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              Anterior
-            </Button>
-            <div className="hidden sm:flex items-center gap-1">{renderPagination()}</div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-            >
-              Próxima
-            </Button>
-          </div>
-        </div>
-        </>
-        ) : (
-          <ProgressChart data={chartData} />
+        {renderContent()}
+
+        {selectedOrder && (
+            <Dialog open={!!selectedOrder} onOpenChange={(isOpen) => !isOpen && setSelectedOrder(null)}>
+                <DialogContent className="sm:max-w-[80vw] lg:max-w-[625px]">
+                    <DialogHeader>
+                        <DialogTitle>Detalhes da Ordem: {selectedOrder}</DialogTitle>
+                        <DialogDescription>
+                            Lista de tarefas associadas a esta ordem de serviço.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[60vh]">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-[80%]">Nome da Tarefa</TableHead>
+
+                                    <TableHead className="text-right">Avanço</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {processedData.filter(row => String(row['ORDEM']) === selectedOrder && String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não').length > 0 ? (
+                                    processedData
+                                    .filter(row => String(row['ORDEM']) === selectedOrder && String(row['RESUMO(SIM/NÃO)']).toLowerCase() === 'não')
+                                    .map(task => (
+                                        <TableRow key={task.id}>
+                                            <TableCell className="font-medium whitespace-normal">{String(task['NOME DA TAREFA'])}</TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex items-center justify-end gap-0.5">
+                                                    <Button 
+                                                        size="icon" 
+                                                        variant="ghost" 
+                                                        className="h-5 w-5" 
+                                                        onClick={() => handleAdvanceChange(task.id, false)}
+                                                    >
+                                                        <ChevronDown className="h-3 w-3"/>
+                                                    </Button>
+                                                    <span className="w-8 text-center font-medium">{task['AVANÇO'] || '0%'}</span>
+                                                    <Button 
+                                                        size="icon"
+                                                        variant="ghost" 
+                                                        className="h-5 w-5" 
+                                                        onClick={() => handleAdvanceChange(task.id, true)}
+                                                    >
+                                                        <ChevronUp className="h-3 w-3"/>
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={2} className="text-center">
+                                            Nenhuma tarefa de execução encontrada para esta ordem.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                </DialogContent>
+            </Dialog>
         )}
       </CardContent>
     </Card>
