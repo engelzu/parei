@@ -1,15 +1,20 @@
-# PAREI v1.0
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
 
-This is a NextJS application for spreadsheet management, created in Firebase Studio.
+# Run and deploy your AI Studio app
 
-## Current Stable Version: 1.0
+This contains everything you need to run your app locally.
 
-### Features:
-- Fetches and displays data from a Google Sheet.
-- Allows editing the "AVANÇO" column with 5% increments.
-- Calculates and displays summary rows for grouped tasks.
-- Provides filtering by "ÁREA", "RESPONSÁVEL", "ATUALIZADOR 1", and "TIPO DE LINHA (RESUMO)".
-- Includes a full-text search functionality.
-- Offers a chart view to visualize the average progress per "ÁREA".
-- Saves all changes back to the Google Sheet.
-- Responsive design for mobile and desktop use.
+View your app in AI Studio: https://ai.studio/apps/drive/13XLwAMB84axQsCNw0vRHZv6cpXd4FhNI
+
+## Run Locally
+
+**Prerequisites:**  Node.js
+
+
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`
